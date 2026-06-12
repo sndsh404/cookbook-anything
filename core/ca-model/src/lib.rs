@@ -165,6 +165,10 @@ pub struct SourceRec {
     /// change re-parse one file instead of the whole tree (M5)
     #[serde(default)]
     pub files: std::collections::BTreeMap<String, String>,
+    /// per-file "size:mtime" stats; an unchanged stat reuses the stored sha
+    /// without reading the file (the git/make move)
+    #[serde(default)]
+    pub stats: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -606,6 +610,8 @@ mod tests {
             parser: "p".into(),
             sha256: "h".into(),
             ingested_at: String::new(),
+            files: Default::default(),
+            stats: Default::default(),
         });
         m.spans.push(Span {
             id: SpanId("span:1".into()),

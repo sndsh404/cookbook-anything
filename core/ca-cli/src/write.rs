@@ -74,7 +74,9 @@ pub fn write_paper(model: &mut Model, plan: &Plan, repo_name: &str, plant_unsupp
     let doc_claims: Vec<(ClaimId, String)> = model
         .claims
         .iter()
-        .filter(|c| !c.id.0.starts_with("c:w"))
+        // superseded claims stay in the model for the audit trail, but only
+        // active ones may be quoted as fact
+        .filter(|c| !c.id.0.starts_with("c:w") && c.status == ca_model::ClaimStatus::Active)
         .take(3)
         .map(|c| (c.id.clone(), c.text.clone()))
         .collect();

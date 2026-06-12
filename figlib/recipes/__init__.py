@@ -13,17 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
-from style import ANNOT_LW, FILLS, PALETTE
-
-# density ceilings per recipe (F-09): beyond these, cluster or split
-CEILINGS = {
-    "architecture_box": 14,
-    "dataflow": 10,
-    "dependency_graph": 25,
-    "pipeline_stages": 8,
-    "annotated_code": 40,   # lines of code
-    "quantity": 12,         # bars
-}
+from constants import ANNOT_LW, CEILINGS, FILLS, PALETTE  # noqa: F401
 
 
 def role_colors(role: str) -> tuple[str, str]:

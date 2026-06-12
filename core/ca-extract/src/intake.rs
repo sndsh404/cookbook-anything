@@ -94,17 +94,47 @@ fn walk_files(root: &Path) -> Vec<PathBuf> {
     out
 }
 
-pub fn hash_source(path: &Path) -> String {
+fn stat_string(f: &Path) -> String {
+    f.metadata()
+        .map(|m| {
+            let mtime = m
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            format!("{}:{}", m.len(), mtime)
+        })
+        .unwrap_or_default()
+}
+
+/// (combined digest, rel -> sha, rel -> "size:mtime"). A file whose stat
+/// matches the previous run reuses the stored sha without being read.
+pub fn hash_source(
+    path: &Path,
+    prev: Option<(&BTreeMap<String, String>, &BTreeMap<String, String>)>,
+) -> (String, BTreeMap<String, String>, BTreeMap<String, String>) {
     if path.is_file() {
-        return sha_hex(&fs::read(path).unwrap_or_default());
+        return (sha_hex(&fs::read(path).unwrap_or_default()), BTreeMap::new(), BTreeMap::new());
     }
     let mut h = Sha256::new();
+    let mut files = BTreeMap::new();
+    let mut stats = BTreeMap::new();
     for f in walk_files(path) {
-        let rel = f.strip_prefix(path).unwrap_or(&f);
-        h.update(rel.to_string_lossy().replace('\\', "/").as_bytes());
-        h.update(Sha256::digest(fs::read(&f).unwrap_or_default()));
+        let rel = f.strip_prefix(path).unwrap_or(&f).to_string_lossy().replace('\\', "/");
+        let st = stat_string(&f);
+        let fh = match prev {
+            Some((pf, ps)) if ps.get(&rel) == Some(&st) && pf.contains_key(&rel) => {
+                pf[&rel].clone()
+            }
+            _ => sha_hex(&fs::read(&f).unwrap_or_default()),
+        };
+        h.update(rel.as_bytes());
+        h.update(fh.as_bytes());
+        files.insert(rel.clone(), fh);
+        stats.insert(rel, st);
     }
-    format!("{:x}", h.finalize())
+    (format!("{:x}", h.finalize()), files, stats)
 }
 
 pub fn classify(path: &Path) -> &'static str {
@@ -127,6 +157,8 @@ pub struct IntakeStats {
     pub redactions: usize,
     pub n_sources: usize,
     pub n_spans: usize,
+    /// files actually re-read this run (the M5 incremental number)
+    pub files_reparsed: usize,
 }
 
 struct SpanSink<'a> {
@@ -152,6 +184,34 @@ impl SpanSink<'_> {
     }
 }
 
+/// Ingest one file from a folder source. Returns true if a span was added.
+fn ingest_file(f: &Path, rel: &str, src_id: &SourceId, trace: &Trace, sink: &mut SpanSink) -> bool {
+    let ext = f.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    if ext == "pdf" {
+        let pt = pdf::extract_text(&fs::read(f).unwrap_or_default());
+        for fb in &pt.fallbacks {
+            trace.event("fallback", json!({"file": rel, "note": fb}));
+        }
+        sink.add(src_id, rel.to_string(), &pt.text);
+        return true;
+    }
+    if !TEXT_EXT.contains(&ext.as_str())
+        || f.metadata().map(|m| m.len()).unwrap_or(0) > MAX_FILE_BYTES
+    {
+        return false;
+    }
+    match fs::read(f) {
+        Ok(bytes) => {
+            sink.add(src_id, rel.to_string(), &String::from_utf8_lossy(&bytes));
+            true
+        }
+        Err(e) => {
+            trace.event("fallback", json!({"file": rel, "note": e.to_string()}));
+            false
+        }
+    }
+}
+
 fn parse_source(
     item: &Path,
     src_id: &SourceId,
@@ -168,27 +228,8 @@ fn parse_source(
                     .unwrap_or(&f)
                     .to_string_lossy()
                     .replace('\\', "/");
-                let ext = f.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-                if ext == "pdf" {
-                    let pt = pdf::extract_text(&fs::read(&f).unwrap_or_default());
-                    for fb in &pt.fallbacks {
-                        trace.event("fallback", json!({"file": rel, "note": fb}));
-                    }
-                    sink.add(src_id, rel, &pt.text);
+                if ingest_file(&f, &rel, src_id, trace, sink) {
                     n += 1;
-                    continue;
-                }
-                if !TEXT_EXT.contains(&ext.as_str())
-                    || f.metadata().map(|m| m.len()).unwrap_or(0) > MAX_FILE_BYTES
-                {
-                    continue;
-                }
-                match fs::read(&f) {
-                    Ok(bytes) => {
-                        sink.add(src_id, rel, &String::from_utf8_lossy(&bytes));
-                        n += 1;
-                    }
-                    Err(e) => trace.event("fallback", json!({"file": rel, "note": e.to_string()})),
                 }
             }
             trace.event("parsed", json!({"files": n}));
@@ -257,8 +298,9 @@ pub fn intake(sources_dir: &Path, cookbook_dir: &Path) -> std::io::Result<Intake
     for (i, item) in items.iter().enumerate() {
         let rel = item.file_name().unwrap_or_default().to_string_lossy().to_string();
         let src_type = classify(item);
-        let digest = hash_source(item);
         let prev = old_by_path.get(&rel);
+        let (digest, file_hashes, file_stats) =
+            hash_source(item, prev.map(|p| (&p.files, &p.stats)));
         let src_id = prev
             .map(|p| p.id.clone())
             .unwrap_or_else(|| SourceId(format!("src:{:04}", old_by_path.len() + stats.parsed + 1)));
@@ -280,7 +322,55 @@ pub fn intake(sources_dir: &Path, cookbook_dir: &Path) -> std::io::Result<Intake
 
         trace.event("detected", json!({"type": src_type, "parser": parser}));
         let mut sink = SpanSink { spans: &mut spans, next: sink_next, redactions: BTreeMap::new() };
-        parse_source(item, &src_id, src_type, &trace, &mut sink);
+
+        // per-file incremental: a changed folder source re-reads only the
+        // files whose hashes moved; everything else carries its spans over
+        let incremental = prev
+            .filter(|p| !p.files.is_empty() && matches!(src_type, "git_repo" | "folder"))
+            .cloned();
+        if let Some(p) = incremental {
+            let (mut changed, mut carried, mut removed) = (0usize, 0usize, 0usize);
+            for f in walk_files(item) {
+                let frel =
+                    f.strip_prefix(item).unwrap_or(&f).to_string_lossy().replace('\\', "/");
+                match (p.files.get(&frel), file_hashes.get(&frel)) {
+                    (Some(old), Some(new)) if old == new => {
+                        let n_before = sink.spans.len();
+                        sink.spans.extend(
+                            old_spans
+                                .iter()
+                                .filter(|s| s.source == src_id && s.locator == frel)
+                                .cloned(),
+                        );
+                        if sink.spans.len() > n_before {
+                            carried += 1;
+                        }
+                    }
+                    _ => {
+                        if ingest_file(&f, &frel, &src_id, &trace, &mut sink) {
+                            changed += 1;
+                        }
+                    }
+                }
+            }
+            removed += p.files.keys().filter(|k| !file_hashes.contains_key(*k)).count();
+            stats.files_reparsed += changed;
+            trace.event(
+                "incremental",
+                json!({"reparsed": changed, "carried": carried, "removed": removed}),
+            );
+            println!(
+                "  [{}/{}] {rel}: incremental, {changed} files reparsed, {carried} carried",
+                i + 1,
+                items.len()
+            );
+        } else {
+            let before = sink.spans.len();
+            parse_source(item, &src_id, src_type, &trace, &mut sink);
+            stats.files_reparsed += sink.spans.len() - before;
+            println!("  [{}/{}] {rel}: {src_type} parsed", i + 1, items.len());
+        }
+
         sink_next = sink.next;
         let n_red: usize = sink.redactions.values().sum();
         if n_red > 0 {
@@ -296,13 +386,9 @@ pub fn intake(sources_dir: &Path, cookbook_dir: &Path) -> std::io::Result<Intake
             parser,
             sha256: digest,
             ingested_at: now_iso(),
+            files: file_hashes,
+            stats: file_stats,
         });
-        println!(
-            "  [{}/{}] {rel}: {src_type} parsed{}",
-            i + 1,
-            items.len(),
-            if n_red > 0 { format!(", {n_red} secrets redacted") } else { String::new() }
-        );
     }
 
     fs::write(
@@ -329,8 +415,8 @@ pub fn intake(sources_dir: &Path, cookbook_dir: &Path) -> std::io::Result<Intake
     stats.n_sources = sources.len();
     stats.n_spans = spans.len();
     println!(
-        "[Stage 1/7] done: {} parsed, {} skipped, {} secrets redacted, {} spans",
-        stats.parsed, stats.skipped, stats.redactions, stats.n_spans
+        "[Stage 1/7] done: {} parsed ({} files reread), {} skipped, {} secrets redacted, {} spans",
+        stats.parsed, stats.files_reparsed, stats.skipped, stats.redactions, stats.n_spans
     );
     Ok(stats)
 }

@@ -29,6 +29,16 @@ def render_figure(payload: FigurePayload, model: dict, out_dir: Path) -> dict:
         raise ValueError(f"unknown recipe {payload.recipe}; the library is closed")
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # incremental: an identical payload renders to an identical figure, so a
+    # matching sidecar sha + existing png means zero work (M5)
+    sc_path = out_dir / f"{payload.id}.sidecar.json"
+    png_path = out_dir / f"{payload.id}.png"
+    if sc_path.exists() and png_path.exists():
+        old = json.loads(sc_path.read_text(encoding="utf-8"))
+        if old.get("payload_sha") == payload.sha():
+            old["cached"] = True
+            return old
+
     with FigureContext(payload.mode):
         fig = recipes[payload.recipe](payload, model)
         facts = collect_facts(fig)

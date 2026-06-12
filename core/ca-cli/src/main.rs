@@ -181,7 +181,7 @@ fn cmd_intake(sources: &str, cookbook: &str) -> ExitCode {
                 "{}",
                 serde_json::json!({"parsed": stats.parsed, "skipped": stats.skipped,
                        "redactions": stats.redactions, "n_sources": stats.n_sources,
-                       "n_spans": stats.n_spans})
+                       "n_spans": stats.n_spans, "files_reparsed": stats.files_reparsed})
             );
             ExitCode::SUCCESS
         }
@@ -290,6 +290,92 @@ fn cmd_compile(cookbook: &str) -> ExitCode {
     };
 
     let report = ca_merge::merge(&mut model);
+
+    // ---- supersession (hard rule 3): a re-run that contradicts an existing
+    // claim marks the old one superseded and links the new one to it; old
+    // claims are carried forward, never deleted. Matched by span locator.
+    let prev_model = Model::load(&cb.join("model.json")).ok();
+    let mut claim_events: Vec<serde_json::Value> = Vec::new();
+    if let Some(prev) = prev_model {
+        let new_loc: std::collections::HashMap<String, String> =
+            model.spans.iter().map(|s| (s.id.0.clone(), s.locator.clone())).collect();
+        let prev_loc: std::collections::HashMap<String, String> =
+            prev.spans.iter().map(|s| (s.id.0.clone(), s.locator.clone())).collect();
+        let prev_max: usize = prev
+            .claims
+            .iter()
+            .filter_map(|c| c.id.0.strip_prefix("c:").and_then(|n| n.parse().ok()))
+            .max()
+            .unwrap_or(0);
+        // active prev doc-claims by locator of their first span
+        let mut prev_by_locator: std::collections::HashMap<String, ca_model::Claim> =
+            std::collections::HashMap::new();
+        for c in prev.claims.iter().filter(|c| {
+            c.status == ca_model::ClaimStatus::Active && !c.id.0.starts_with("c:w")
+        }) {
+            if let Some(loc) = c.spans.iter().next().and_then(|sp| prev_loc.get(sp.0.as_str())) {
+                prev_by_locator.insert(loc.clone(), c.clone());
+            }
+        }
+        let mut carried: Vec<ca_model::Claim> =
+            prev.claims.iter().filter(|c| !c.id.0.starts_with("c:w")).cloned().collect();
+        let carried_ids: std::collections::HashSet<String> =
+            carried.iter().map(|c| c.id.0.clone()).collect();
+        let mut next_id = prev_max + 1;
+        let mut final_claims: Vec<ca_model::Claim> = Vec::new();
+        for mut c in std::mem::take(&mut model.claims) {
+            let loc = c.spans.iter().next().and_then(|sp| new_loc.get(sp.0.as_str())).cloned();
+            match loc.and_then(|l| prev_by_locator.get(&l).cloned()) {
+                Some(old) if old.text == c.text => {
+                    // unchanged claim: keep the old identity
+                    carried.retain(|x| x.id != old.id);
+                    let mut kept = old.clone();
+                    kept.spans = c.spans.clone();
+                    final_claims.push(kept);
+                }
+                Some(old) => {
+                    // contradiction: supersede, link, keep the old one
+                    c.id = ca_model::ClaimId(format!("c:{:04}", next_id));
+                    next_id += 1;
+                    c.supersedes = Some(old.id.clone());
+                    claim_events.push(serde_json::json!({
+                        "event": "superseded", "new": c.id.0, "old": old.id.0,
+                        "new_text": c.text.chars().take(80).collect::<String>()}));
+                    carried.retain(|x| x.id != old.id);
+                    let mut dead = old.clone();
+                    dead.status = ca_model::ClaimStatus::Superseded;
+                    final_claims.push(dead);
+                    final_claims.push(c);
+                }
+                None => {
+                    if carried_ids.contains(&c.id.0) {
+                        // id collision with a carried claim: renumber
+                        c.id = ca_model::ClaimId(format!("c:{:04}", next_id));
+                        next_id += 1;
+                    }
+                    claim_events.push(serde_json::json!({"event": "new", "id": c.id.0}));
+                    final_claims.push(c);
+                }
+            }
+        }
+        // prev claims whose locators vanished from this run: keep superseded
+        // ones for the audit trail; drop actives whose spans no longer exist
+        let new_span_ids: std::collections::HashSet<&str> =
+            model.spans.iter().map(|s| s.id.0.as_str()).collect();
+        for old in carried {
+            if old.status == ca_model::ClaimStatus::Superseded
+                && old.spans.iter().all(|sp| new_span_ids.contains(sp.0.as_str()))
+            {
+                final_claims.push(old);
+            }
+        }
+        model.claims = final_claims;
+    } else {
+        for c in &model.claims {
+            claim_events.push(serde_json::json!({"event": "new", "id": c.id.0}));
+        }
+    }
+
     println!(
         "  extracted: {} nodes, {} edges, {} claims, {} glossary terms ({relinked} imports relinked)",
         model.nodes.len(),
@@ -315,12 +401,15 @@ fn cmd_compile(cookbook: &str) -> ExitCode {
     if let Ok(mut runs) =
         std::fs::OpenOptions::new().create(true).append(true).open(cb.join("runs.jsonl"))
     {
+        let n_superseded = claim_events.iter().filter(|e| e["event"] == "superseded").count();
         let _ = writeln!(
             runs,
             "{}",
             serde_json::json!({"at": ca_extract::intake::now_iso(), "stage": "compile",
                    "nodes": model.nodes.len(), "edges": model.edges.len(),
-                   "claims": model.claims.len(), "could_not_fix": report.could_not_fix.len()})
+                   "claims": model.claims.len(), "could_not_fix": report.could_not_fix.len(),
+                   "claims_superseded": n_superseded,
+                   "claim_events": claim_events.into_iter().take(60).collect::<Vec<_>>()})
         );
     }
     println!(

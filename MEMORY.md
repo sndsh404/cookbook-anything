@@ -19,3 +19,7 @@ C:\Users\bhansa01\Downloads\cookbook-20260611T231425Z-3-002\cookbook\.
 [LEARN:architecture] 2026-06-12 The polyglot split (rust core / ts runner / python figlib) made one whole class of merge code disappear: the agent-confidence clamp is gone because ca-model makes an agent edge at confidence 1.0 unrepresentable. Encoding invariants in types beats enforcing them in pipelines.
 
 [LEARN:git] 2026-06-12 Sandesh wants commit messages short and sweet, e.g. 'm4: ship paper at grade 99'. Keep them one line, lowercase, no trailers.
+
+[LEARN:incremental] 2026-06-12 The 20 pct incremental gate was met by attacking fixed overheads, not the obvious stages: lazy matplotlib import (a cached figure run never pays it), stat-based hash skipping (git's move), one alternation regex instead of O(n^2) regex builds, and merging two python spawns into one. Wall-time gates are won in startup costs.
+
+[LEARN:verify] 2026-06-12 Supersession plus a verbatim-checking verifier caught a subtle writer bug: quoting a superseded claim whose span text changed under it. Status filters on claim queries are load-bearing, not cosmetic.

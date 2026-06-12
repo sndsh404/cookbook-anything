@@ -183,20 +183,28 @@ pub fn extract(file_span: &Span, src_root: &str, out: &mut ExtractOut) -> BTreeM
         }
     }
 
-    // same-file calls between top-level functions
-    for (caller_name, a, b) in &top_ranges {
-        let caller = local_funcs[caller_name].clone();
-        let body = lines[*a..=(*b).min(lines.len() - 1)].join("\n");
-        for (callee_name, callee) in &local_funcs {
-            if callee_name == caller_name {
-                continue;
-            }
-            let pat = Regex::new(&format!(r"\b{}\s*\(", regex::escape(callee_name))).unwrap();
-            // skip the def line itself
-            if pat.find_iter(&body).any(|m| !body[..m.start()].ends_with("def ")) {
+    // same-file calls between top-level functions: ONE alternation regex per
+    // file, each body scanned once (the per-pair version was the compile
+    // stage's hot spot)
+    if local_funcs.len() >= 2 {
+        let alternation: Vec<String> =
+            local_funcs.keys().map(|n| regex::escape(n)).collect();
+        let call_re = Regex::new(&format!(r"\b({})\s*\(", alternation.join("|"))).unwrap();
+        for (caller_name, a, b) in &top_ranges {
+            let caller = local_funcs[caller_name].clone();
+            let body = lines[*a..=(*b).min(lines.len() - 1)].join("\n");
+            let mut seen: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
+            for m in call_re.captures_iter(&body) {
+                let callee_name = m.get(1).unwrap().as_str();
+                if callee_name == caller_name
+                    || body[..m.get(0).unwrap().start()].ends_with("def ")
+                    || !seen.insert(callee_name)
+                {
+                    continue;
+                }
                 out.edges.push(Edge::extracted(
                     caller.clone(),
-                    callee.clone(),
+                    local_funcs[callee_name].clone(),
                     EdgeKind::Calls,
                     ex.clone(),
                     vec![file_span.id.clone()],

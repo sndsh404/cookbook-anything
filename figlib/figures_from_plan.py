@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from figcheck import check_dir
 from payload import FigurePayload, PayloadEdge, PayloadNode, PayloadQuantity
-from render import render_figure
+# render (and matplotlib) is imported lazily inside main(): a fully cached
+# run never pays the matplotlib import (M5)
 
 
 def _short(name: str) -> str:
@@ -102,7 +103,15 @@ def main() -> int:
     fig_dir = ws / "out" / "figures"
     payloads = build_payloads(model, plan)
     print(f"[Stage 5/7] figures: rendering {len(payloads)} payloads")
+    render_figure = None
     for p in payloads:
+        sc_path = fig_dir / f"{p.id}.sidecar.json"
+        if (sc_path.exists() and (fig_dir / f"{p.id}.png").exists()
+                and json.loads(sc_path.read_text(encoding="utf-8")).get("payload_sha") == p.sha()):
+            print(f"  cached {p.id} ({p.recipe})")
+            continue
+        if render_figure is None:
+            from render import render_figure  # noqa: PLC0415
         render_figure(p, model, fig_dir)
         print(f"  rendered {p.id} ({p.recipe})")
     paper = ws / "out" / "paper.md"
@@ -114,6 +123,19 @@ def main() -> int:
     print(f"[Stage 5/7] figcheck: {report['checked']} figures, {p0} P0, {p1} P1")
     for f in report["findings"]:
         print(f"  {f['severity']} [{f['rule']}] {f['text']}")
+
+    # prose lints ride in the same process (one python startup, not two)
+    if paper.exists():
+        from lint_prose import lint
+        lf = lint(paper.read_text(encoding="utf-8"))
+        (ws / "out" / "lint_report.json").write_text(
+            json.dumps({"findings": lf}, indent=1), encoding="utf-8")
+        lp1 = sum(1 for f in lf if f["severity"] == "P1")
+        print(f"[Stage 5/7] lint_prose: {len(lf)} findings ({lp1} P1)")
+        for f in lf:
+            print(f"  {f['severity']} [{f['rule']}] {f['text']}")
+        if lp1:
+            return 1
     return 1 if p0 or p1 else 0
 
 

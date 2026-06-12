@@ -17,31 +17,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 # DejaVu fallback is fine and the warning spam is not
 logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
 
-# semantic palette: six colors with meanings
-PALETTE = {
-    "ink": "#1a1a2e",     # text, axes, structure
-    "accent": "#e63946",  # the one thing this figure is about
-    "good": "#2a9d8f",    # healthy / verified / fast
-    "warn": "#e9a23b",    # caution / fallback / slow
-    "muted": "#9aa5b1",   # context elements, de-emphasized
-    "paper": "#fbfaf8",   # background
-}
-# tints recipes may use for fills (derived, still closed)
-FILLS = {
-    "accent_fill": "#fadbd8",
-    "good_fill": "#d8efec",
-    "warn_fill": "#fbecd5",
-    "muted_fill": "#eceff2",
-}
-GRID_COLOR = "#dddddd"
-ALLOWED_COLORS = {c.lower() for c in list(PALETTE.values()) + list(FILLS.values())}
-ALLOWED_COLORS |= {"#ffffff", "#000000", "none", GRID_COLOR}
-
-FONT_MIN_PT = 9.0
-AXIS_LW = 1.0
-DATA_LW = 2.0
-ANNOT_LW = 1.2
-DOT_RADIUS = 4.0
+# the palette and rule constants live in constants.py (no matplotlib there)
+# so checkers stay cheap; re-exported here for the recipes
+from constants import (ALLOWED_COLORS, ANNOT_LW, AXIS_LW, DATA_LW,  # noqa: F401
+                       DOT_RADIUS, FILLS, FONT_MIN_PT, GRID_COLOR, PALETTE)
 
 _BASE = {
     "figure.dpi": 200,

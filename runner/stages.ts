@@ -6,7 +6,7 @@
 //   node --experimental-strip-types stages.ts <sources_dir> <workspace_dir> <repo_name>
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,8 +15,12 @@ const root = resolve(here, "..");
 const CA = join(root, "core", "target", "release", process.platform === "win32" ? "ca.exe" : "ca");
 const PY = process.env.CA_PYTHON ?? "python";
 
+const timings: Record<string, number> = {};
+
 function run(name: string, cmd: string, args: string[]): boolean {
+  const t0 = Date.now();
   const r = spawnSync(cmd, args, { stdio: "inherit" });
+  timings[name] = Date.now() - t0;
   if (r.status !== 0) {
     console.error(`[stages] ${name} FAILED (exit ${r.status})`);
     return false;
@@ -42,10 +46,8 @@ const pipeline: Array<[string, string, string[]]> = [
   ["plan", CA, ["plan", cookbook]],
   ["write", CA, ["write", cookbook, workspace, repoName, "--ship"]],
   ["verify", CA, ["verify", cookbook, workspace]],
+  // figures_from_plan also runs the prose lints (one python process)
   ["figures", PY, [join(root, "figlib", "figures_from_plan.py"), cookbook, workspace]],
-  ["lint", PY, [join(root, "figlib", "lint_prose.py"),
-                join(workspace, "out", "paper.md"),
-                join(workspace, "out", "lint_report.json")]],
 ];
 
 for (const [name, cmd, args] of pipeline) {
@@ -54,4 +56,11 @@ for (const [name, cmd, args] of pipeline) {
 
 // the scored gate decides; stages.ts only relays its verdict
 const ok = run("grade", CA, ["grade", workspace]);
+
+// per-stage wall timings into the trace: the expensive stage stays visible
+const total = Object.values(timings).reduce((a, b) => a + b, 0);
+writeFileSync(join(cookbook, "timings.json"),
+  JSON.stringify({ at: new Date().toISOString(), total_ms: total, stages: timings }, null, 1));
+console.log(`[stages] total ${total}ms: ` +
+  Object.entries(timings).map(([k, v]) => `${k}=${v}`).join(" "));
 process.exit(ok ? 0 : 1);

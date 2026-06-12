@@ -15,8 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from style import ALLOWED_COLORS, FONT_MIN_PT
-from recipes import CEILINGS
+from constants import ALLOWED_COLORS, CEILINGS, FONT_MIN_PT
 
 BANNED_CMAP_MARKERS = {"#0000ff", "#00ffff", "#ffff00", "#ff0000", "#008000"}  # jet-ish anchors
 
