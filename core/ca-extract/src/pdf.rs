@@ -13,7 +13,20 @@ pub struct PdfText {
     pub fallbacks: Vec<String>,
 }
 
+/// Per-page text, one entry per content stream that yielded text. Chapter
+/// workers in the acquisition swarm each take a page range, so pages need
+/// their own spans (locator "book.pdf#p3").
+pub struct PdfPages {
+    pub pages: Vec<String>,
+    pub fallbacks: Vec<String>,
+}
+
 pub fn extract_text(data: &[u8]) -> PdfText {
+    let p = extract_pages(data);
+    PdfText { text: p.pages.join(" "), fallbacks: p.fallbacks }
+}
+
+pub fn extract_pages(data: &[u8]) -> PdfPages {
     static STREAM: OnceLock<BytesRegex> = OnceLock::new();
     static TEXT_OP: OnceLock<Regex> = OnceLock::new();
     static LITERAL: OnceLock<Regex> = OnceLock::new();
@@ -27,7 +40,7 @@ pub fn extract_text(data: &[u8]) -> PdfText {
     });
     let literal = LITERAL.get_or_init(|| Regex::new(r"\(((?:[^()\\]|\\.)*)\)").unwrap());
 
-    let mut chunks: Vec<String> = Vec::new();
+    let mut pages: Vec<String> = Vec::new();
     let mut fallbacks = Vec::new();
 
     for cap in stream_re.captures_iter(data) {
@@ -48,14 +61,18 @@ pub fn extract_text(data: &[u8]) -> PdfText {
             continue;
         }
         let s: String = body.iter().map(|&b| b as char).collect(); // latin-1
+        let mut chunks: Vec<String> = Vec::new();
         for m in text_op.find_iter(&s) {
             for lit in literal.captures_iter(m.as_str()) {
                 chunks.push(lit[1].replace(r"\(", "(").replace(r"\)", ")").replace(r"\\", "\\"));
             }
         }
+        if !chunks.is_empty() {
+            pages.push(chunks.join(" ").trim().to_string());
+        }
     }
-    if chunks.is_empty() {
+    if pages.is_empty() {
         fallbacks.push("no extractable text layer (would need OCR); skipping with trace note".into());
     }
-    PdfText { text: chunks.join(" ").trim().to_string(), fallbacks }
+    PdfPages { pages, fallbacks }
 }

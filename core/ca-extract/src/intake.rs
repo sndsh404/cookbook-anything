@@ -235,12 +235,21 @@ fn parse_source(
             trace.event("parsed", json!({"files": n}));
         }
         "pdf" => {
-            let pt = pdf::extract_text(&fs::read(item).unwrap_or_default());
-            for fb in &pt.fallbacks {
+            let name: String = item.file_name().unwrap_or_default().to_string_lossy().into();
+            let pp = pdf::extract_pages(&fs::read(item).unwrap_or_default());
+            for fb in &pp.fallbacks {
                 trace.event("fallback", json!({"note": fb}));
             }
-            sink.add(src_id, item.file_name().unwrap_or_default().to_string_lossy().into(), &pt.text);
-            trace.event("parsed", json!({"files": 1}));
+            if pp.pages.len() <= 1 {
+                sink.add(src_id, name, &pp.pages.first().cloned().unwrap_or_default());
+            } else {
+                // multi-page: one span per page so swarm workers can each
+                // take a chapter range
+                for (i, page) in pp.pages.iter().enumerate() {
+                    sink.add(src_id, format!("{name}#p{}", i + 1), page);
+                }
+            }
+            trace.event("parsed", json!({"files": 1, "pages": pp.pages.len().max(1)}));
         }
         _ => {
             let bytes = fs::read(item).unwrap_or_default();
