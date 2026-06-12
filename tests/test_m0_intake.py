@@ -12,8 +12,8 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
-from intake import intake  # noqa: E402
+sys.path.insert(0, str(ROOT / "tests"))
+from ca import intake  # noqa: E402  (drives the Rust core binary)
 
 WS = ROOT / "workspace" / "_m0test"
 

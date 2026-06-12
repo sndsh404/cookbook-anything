@@ -1,0 +1,10 @@
+[package]
+name = "ca-grade"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ca-model = { path = "../ca-model" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+regex = { workspace = true }

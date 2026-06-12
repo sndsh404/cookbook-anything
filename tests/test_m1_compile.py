@@ -1,7 +1,8 @@
-"""M1 gate: on a real mid-size repo (llmwiki, ~104 py + 9 sql files):
-model.json validates; 100% of edges carry extractors; 100% of claims carry
-spans; 0 unresolved danglers; a planted agent-proposed edge lands at
-confidence < 1.0.
+"""M1 gate (Rust core): on a real mid-size repo (llmwiki, ~104 py + 9 sql
+files): model.json validates; 100% of edges carry extractors; 100% of claims
+carry spans; 0 unresolved danglers; an agent-proposed edge at confidence 1.0
+is REJECTED at load (the invariant is structural now), while one at < 1.0
+loads fine.
 """
 from __future__ import annotations
 
@@ -11,11 +12,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
-from intake import intake                    # noqa: E402
-from compile_model import compile_model     # noqa: E402
-import merge as merge_mod                    # noqa: E402
-import model_schema                          # noqa: E402
+sys.path.insert(0, str(ROOT / "tests"))
+import ca  # noqa: E402
 
 REF = Path(r"C:\Users\bhansa01\Downloads\cookbook-20260611T231425Z-3-002\cookbook\llmwiki-master")
 WS = ROOT / "workspace" / "_m1test"
@@ -29,15 +27,14 @@ def main() -> int:
         shutil.copytree(REF, src / "llmwiki",
                         ignore=shutil.ignore_patterns(".git", "node_modules", "*.png"))
     cb = WS / ".cookbook"
-    if (cb / "model.json").exists():
-        (cb / "model.json").unlink()
 
-    intake(src, cb)
-    model = compile_model(cb)
+    ca.intake(src, cb)
+    ca.run("compile", str(cb))
+    model = json.loads((cb / "model.json").read_text(encoding="utf-8"))
 
-    errors = model_schema.validate(model)
-    if errors:
-        failures.append(f"schema invalid: {errors[:5]}")
+    proc = ca.run("validate", str(cb / "model.json"), check=False)
+    if proc.returncode != 0:
+        failures.append(f"ca validate rejected the compiled model: {proc.stderr[:300]}")
 
     n_edges = len(model["edges"])
     with_ext = sum(1 for e in model["edges"] if e.get("extractor"))
@@ -62,23 +59,31 @@ def main() -> int:
 
     if len(model["nodes"]) < 100:
         failures.append(f"suspiciously small model: {len(model['nodes'])} nodes")
-    if not any(e["type"] == "foreign_key" for e in model["edges"]):
-        print("note: no foreign_key edges found in llmwiki sql (not fatal)")
     if not any(e["type"] == "calls" for e in model["edges"]):
         failures.append("no calls edges at all; extractor too weak")
+    if not any(e["type"] == "imports" for e in model["edges"]):
+        failures.append("no imports edges at all")
 
-    # planted agent-proposed edge must land at confidence < 1.0
-    two = [n["id"] for n in model["nodes"][:2]]
-    model["edges"].append({"source": two[0], "target": two[1], "type": "depends_on",
-                           "extractor": "agent:planner", "spans": [], "confidence": 1.0})
-    model2, fixed, residue = merge_mod.merge(model)
-    planted = [e for e in model2["edges"]
-               if e.get("extractor") == "agent:planner"]
-    if not planted or planted[0]["confidence"] >= 1.0:
-        failures.append(f"planted agent edge not clamped: {planted}")
-    else:
-        print(f"planted agent edge clamped to {planted[0]['confidence']}")
-    print(f"METRIC m1_agent_edge_clamped {1 if planted and planted[0]['confidence'] < 1.0 else 0} up")
+    # the firewall test: an agent edge at confidence 1.0 must be REJECTED at
+    # load; the same edge at 0.75 must be accepted
+    two = sorted(node_ids)[:2]
+    tampered = WS / "tampered.json"
+    bad = dict(model)
+    bad["edges"] = model["edges"] + [{"source": two[0], "target": two[1],
+                                      "type": "depends_on", "extractor": "agent:planner",
+                                      "spans": [], "confidence": 1.0}]
+    tampered.write_text(json.dumps(bad), encoding="utf-8")
+    rej = ca.run("validate", str(tampered), check=False)
+    rejected = 1 if rej.returncode != 0 and "agent" in (rej.stderr + rej.stdout) else 0
+    print(f"METRIC m1_agent_full_confidence_rejected {rejected} up")
+    if not rejected:
+        failures.append("tampered model with agent edge at 1.0 was NOT rejected")
+
+    bad["edges"][-1]["confidence"] = 0.75
+    tampered.write_text(json.dumps(bad), encoding="utf-8")
+    ok = ca.run("validate", str(tampered), check=False)
+    if ok.returncode != 0:
+        failures.append(f"agent edge at 0.75 should validate: {ok.stderr[:200]}")
 
     if failures:
         print("M1 GATE FAILED:")

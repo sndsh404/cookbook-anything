@@ -20,23 +20,33 @@ extractor or an honest "unverified" marker, never a more confident prompt.
 6. The score comes from scripts/assess.py and scripts/grade.py, never from
    opinion. Below 80, or any P0, or a regression: does not ship, not pushed.
 
-## Repo map
+## Repo map (polyglot, split along the firewall)
 
-- `DESIGN.md` spec; `WORKFLOW.md` session loop; `MEMORY.md` durable lessons.
-- `scripts/` deterministic floors: intake, extract_*, merge, topology,
-  figcheck, lint_prose, grade, acquire, assess.
-- `figlib/` house style, recipes, seeded_defects.
+- `core/` RUST cargo workspace - the truth firewall. Crates: ca-model (the
+  knowledge model; invariants encoded in types: no Edge without ExtractorId,
+  no Claim without spans, no Asset without License, no agent edge at 1.0),
+  ca-extract (intake + secret filter + python/markdown/csv/sql extractors),
+  ca-merge, ca-topology, ca-grade, ca-cli (the `ca` binary).
+- `runner/` TYPESCRIPT (Node) - acquire/ (fetch ladder, robots, cache,
+  license gate), stages.ts (invokes the Rust core and the Python renderer),
+  mcp.ts. Playwright for rendering/screenshots.
+- `figlib/` PYTHON, leaf renderer only - style.py, recipes/, figcheck.py,
+  lint_prose.py, seeded_defects/. Receives typed FigurePayloads, emits
+  PNG/SVG + provenance metadata; never touches firewall invariants.
+- `scripts/assess.py` the objective harness (Python is fine here; it is the
+  meta-gate, not the core).
 - `workspace/` per-project (gitignored): sources/, .cookbook/ (model.json,
   trace/, runs.jsonl), out/ (paper.md, figures/).
-- `tests/` gate tests per milestone.
+- `tests/` gate tests per milestone (drive the `ca` binary via tests/ca.py).
 - `quality_reports/` assessments, checkpoints, session logs.
 
 ## Commands
 
-- Run everything: `python scripts/assess.py` (exit 0 = green)
-- Tests only: `python -m pytest tests -q` (fallback: `python tests/run_all.py`)
-- Pipeline on a target: `python scripts/pipeline.py <sources-dir>`
-- Grade a shipped paper: `python scripts/grade.py workspace/out`
+- Run everything: `python scripts/assess.py` (exit 0 = green; runs cargo
+  build + cargo test + all gate tests + hard-rule scans)
+- Core only: `cd core; cargo test --release`
+- Core CLI: `core\target\release\ca.exe <intake|compile|topology|validate|grade>`
+- npm on this machine: use `npm.cmd` (powershell execution policy blocks npm.ps1)
 
 ## Milestone checklist (tick only after assess.py verifies)
 

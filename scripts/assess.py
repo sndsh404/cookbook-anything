@@ -62,8 +62,23 @@ class Findings:
 
 
 def check_build(f: Findings) -> bool:
+    """cargo build + cargo test on the Rust core, py_compile on the Python
+    leaf renderer (figlib) and harness. Any failure = score 0."""
     ok = True
-    for d in ("scripts", "figlib"):
+    core = ROOT / "core"
+    if core.exists():
+        for cmd in (["cargo", "build", "--release"], ["cargo", "test", "--release", "--quiet"]):
+            proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(core),
+                                  timeout=1200, shell=False)
+            if proc.returncode != 0:
+                tail = "\n".join(((proc.stdout or "") + (proc.stderr or "")).splitlines()[-15:])
+                f.p0(f"build: `{' '.join(cmd)}` failed\n```\n{tail}\n```")
+                ok = False
+                break
+    else:
+        f.p0("build: core/ cargo workspace missing")
+        ok = False
+    for d in ("scripts", "figlib", "tests"):
         base = ROOT / d
         if not base.exists():
             continue
