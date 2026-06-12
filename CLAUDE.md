@@ -64,6 +64,9 @@ extractor or an honest "unverified" marker, never a more confident prompt.
 - [x] M4 real paper ships at grade >= 80 with all appendices; 3 issues filed
 - [x] M5 incremental: one-file change re-ships at < 20% of full-run work;
       supersession linked; runs.jsonl reconstructs claim history
+- [x] M6 swarm: 3 workers cover a 6-chapter book in parallel; >= 8 claims
+      all span-backed; 2 planted unsourced findings rejected, 0 admitted;
+      support raises confidence; contradiction recorded, never resolved
 
 ## Conventions
 

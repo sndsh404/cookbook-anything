@@ -1,4 +1,4 @@
-# Assessment - 2026-06-12T14:22:49.333235+00:00
+# Assessment - 2026-06-12T19:45:15.085670+00:00
 
 **Score: 100/100** (green)
 
@@ -30,8 +30,14 @@
 - `m4_figure_p0` = 0.0 (want down, from test_m4_ship.py)
 - `m4_grade` = 99.0 (want up, from test_m4_ship.py)
 - `m5_history_chain_len` = 3.0 (want up, from test_m5_incremental.py)
-- `m5_rerun_work_pct` = 15.6 (want down, from test_m5_incremental.py)
+- `m5_rerun_work_pct` = 15.3 (want down, from test_m5_incremental.py)
 - `m5_supersession_linked` = 1.0 (want up, from test_m5_incremental.py)
+- `m6_chapters_covered` = 6.0 (want up, from test_m6_swarm.py)
+- `m6_claims_admitted` = 9.0 (want up, from test_m6_swarm.py)
+- `m6_contradiction_recorded` = 1.0 (want up, from test_m6_swarm.py)
+- `m6_rejected_unsourced` = 2.0 (want up, from test_m6_swarm.py)
+- `m6_support_confidence_raised` = 1.0 (want up, from test_m6_swarm.py)
+- `m6_unsourced_admitted` = 0.0 (want down, from test_m6_swarm.py)
 - `secrets_leaked` = 0.0 (want down, from test_m0_intake.py)
 
 ## Findings

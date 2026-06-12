@@ -23,3 +23,7 @@ C:\Users\bhansa01\Downloads\cookbook-20260611T231425Z-3-002\cookbook\.
 [LEARN:incremental] 2026-06-12 The 20 pct incremental gate was met by attacking fixed overheads, not the obvious stages: lazy matplotlib import (a cached figure run never pays it), stat-based hash skipping (git's move), one alternation regex instead of O(n^2) regex builds, and merging two python spawns into one. Wall-time gates are won in startup costs.
 
 [LEARN:verify] 2026-06-12 Supersession plus a verbatim-checking verifier caught a subtle writer bug: quoting a superseded claim whose span text changed under it. Status filters on claim queries are load-bearing, not cosmetic.
+
+[LEARN:swarm] 2026-06-12 The OpenAI swarm pattern (agent + handoff + shared context, nothing else) drops cleanly onto deterministic workers: parallel fan-out is just Promise.all over handoffs with array-merging context. The part that keeps it honest is not the swarm at all, it is the single admission gate: workers propose, ca admit re-verifies every span reference, so a sloppy worker can only waste its own time.
+
+[LEARN:harness] 2026-06-12 Zero-tolerance regression checks on wall-clock metrics produce false reds (15.6 to 15.8 pct). Give timing metrics a small tolerance band in the harness and keep the hard threshold in the gate test itself.
