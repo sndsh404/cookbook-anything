@@ -56,7 +56,7 @@ extractor or an honest "unverified" marker, never a more confident prompt.
       100% claims have spans; 0 danglers; planted proposed edge < 1.0
 - [x] M2 figures: critic catches >= 9/10 seeded defects with correct rule
       IDs; hallucinated edge rejected; 6 recipes render in both modes
-- [ ] M2.5 acquire: license gate verifies via Commons metadata; mismatched CC
+- [x] M2.5 acquire: license gate verifies via Commons metadata; mismatched CC
       claim rejected; ARR converted to figure request; 0 robots violations,
       0 off-allowlist over 50-page seeded crawl; rerun fetches 0
 - [ ] M3 plan + write: chapter graph acyclic; claim coverage >= 95%; 0 banned
