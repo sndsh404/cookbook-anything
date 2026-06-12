@@ -54,7 +54,7 @@ extractor or an honest "unverified" marker, never a more confident prompt.
       12 planted secrets, 0 leaks; rerun on unchanged sources reparses 0
 - [x] M1 compile: model validates on a real repo; 100% edges have extractors;
       100% claims have spans; 0 danglers; planted proposed edge < 1.0
-- [ ] M2 figures: critic catches >= 9/10 seeded defects with correct rule
+- [x] M2 figures: critic catches >= 9/10 seeded defects with correct rule
       IDs; hallucinated edge rejected; 6 recipes render in both modes
 - [ ] M2.5 acquire: license gate verifies via Commons metadata; mismatched CC
       claim rejected; ARR converted to figure request; 0 robots violations,
