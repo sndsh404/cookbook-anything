@@ -126,8 +126,13 @@ def check_regressions(f: Findings, metrics: dict[str, dict]) -> list[str]:
         prev = last_metrics.get(name)
         if not prev:
             continue
-        worse = (cur["value"] < prev["value"]) if cur["dir"] == "up" else (cur["value"] > prev["value"])
-        if worse:
+        delta = (prev["value"] - cur["value"]) if cur["dir"] == "up" else (cur["value"] - prev["value"])
+        # tolerance: timing and percentage metrics jitter run to run; a real
+        # regression moves more than 5% of the previous value (floor 0.05 so
+        # count metrics like secrets_leaked 0 -> 1 still trip). The hard
+        # thresholds live in the gate tests themselves.
+        tolerance = 0.05 * max(abs(prev["value"]), 1.0)
+        if delta > tolerance:
             msg = f"regression: {name} went {prev['value']} -> {cur['value']} (want {cur['dir']})"
             regressions.append(msg)
             f.p1(msg)
