@@ -35,6 +35,7 @@ dependencies = [
  "ca-merge",
  "ca-model",
  "ca-topology",
+ "serde",
  "serde_json",
 ]
 

@@ -1,4 +1,4 @@
-# Assessment - 2026-06-12T13:47:02.910724+00:00
+# Assessment - 2026-06-12T13:59:02.934924+00:00
 
 **Score: 100/100** (green)
 
@@ -20,6 +20,12 @@
 - `m2_recipe_violations` = 0.0 (want down, from test_m2_figures.py)
 - `m2_recipes_rendered` = 7.0 (want up, from test_m2_figures.py)
 - `m2_seeded_defects_caught` = 10.0 (want up, from test_m2_figures.py)
+- `m3_banned_words` = 0.0 (want down, from test_m3_write.py)
+- `m3_chapter_graph_acyclic` = 1.0 (want up, from test_m3_write.py)
+- `m3_claim_coverage` = 100.0 (want up, from test_m3_write.py)
+- `m3_emdashes` = 0.0 (want down, from test_m3_write.py)
+- `m3_planted_flagged` = 1.0 (want up, from test_m3_write.py)
+- `m3_prose_defects_caught` = 10.0 (want up, from test_m3_write.py)
 - `secrets_leaked` = 0.0 (want down, from test_m0_intake.py)
 
 ## Findings
