@@ -92,7 +92,10 @@ pub fn grade(workspace: &Path) -> Grade {
     if paper.exists() {
         let text = std::fs::read_to_string(&paper).unwrap_or_default();
         let code_re = Regex::new(r"(?s)```.*?```").unwrap();
-        let prose = code_re.replace_all(&text, "");
+        // prose rules apply to the authored body; glossary and appendices
+        // quote source material verbatim as evidence (same scope as lint_prose)
+        let authored = text.split("## Glossary").next().unwrap_or(&text).to_string();
+        let prose = code_re.replace_all(&authored, "");
         for w in BANNED_WORDS {
             let re = Regex::new(&format!(r"(?i)\b{}\b", regex::escape(w))).unwrap();
             let n = re.find_iter(&prose).count() as i64;

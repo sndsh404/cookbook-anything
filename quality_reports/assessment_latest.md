@@ -1,4 +1,4 @@
-# Assessment - 2026-06-12T14:02:13.688762+00:00
+# Assessment - 2026-06-12T14:05:01.206431+00:00
 
 **Score: 99/100** (green)
 
@@ -28,7 +28,7 @@
 - `m3_prose_defects_caught` = 10.0 (want up, from test_m3_write.py)
 - `m4_chapters_figured` = 4.0 (want up, from test_m4_ship.py)
 - `m4_figure_p0` = 0.0 (want down, from test_m4_ship.py)
-- `m4_grade` = 90.0 (want up, from test_m4_ship.py)
+- `m4_grade` = 99.0 (want up, from test_m4_ship.py)
 - `secrets_leaked` = 0.0 (want down, from test_m0_intake.py)
 
 ## Findings

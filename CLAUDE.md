@@ -61,7 +61,7 @@ extractor or an honest "unverified" marker, never a more confident prompt.
       0 off-allowlist over 50-page seeded crawl; rerun fetches 0
 - [x] M3 plan + write: chapter graph acyclic; claim coverage >= 95%; 0 banned
       words, 0 em dashes; planted unsupported sentence flagged
-- [ ] M4 real paper ships at grade >= 80 with all appendices; 3 issues filed
+- [x] M4 real paper ships at grade >= 80 with all appendices; 3 issues filed
 - [ ] M5 incremental: one-file change re-ships at < 20% of full-run work;
       supersession linked; runs.jsonl reconstructs claim history
 

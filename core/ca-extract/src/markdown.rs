@@ -60,6 +60,8 @@ fn claim_worthy(s: &str) -> bool {
         && !s.contains('|')
         && !s.contains("```")
         && !s.contains('?')
+        // a sentence mutilated by the secret filter is evidence, not prose
+        && !s.contains("[REDACTED")
 }
 
 pub fn extract(file_span: &Span, src_root: &str, out: &mut ExtractOut) {

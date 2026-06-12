@@ -99,8 +99,10 @@ pub fn write_paper(model: &mut Model, plan: &Plan, repo_name: &str, plant_unsupp
     // ---------- chapters
     for ch in &plan.chapters {
         writeln!(p, "## Chapter {}: {}\n", ch.index + 1, ch.title).ok();
-        let member_idx: Vec<usize> =
+        let mut member_idx: Vec<usize> =
             ch.node_ids.iter().filter_map(|id| nodes_by_id.get(id).copied()).collect();
+        // documented files first: the bullets should teach, not apologize
+        member_idx.sort_by_key(|&i| (model.nodes[i].summary.is_empty(), model.nodes[i].name.clone()));
         let spans: Vec<_> = member_idx
             .iter()
             .filter_map(|&i| model.nodes[i].spans.first().cloned())
@@ -131,7 +133,11 @@ pub fn write_paper(model: &mut Model, plan: &Plan, repo_name: &str, plant_unsupp
         }
         writeln!(p).ok();
         writeln!(p, "![chapter figure](figures/fig_ch{}.png)\n", ch.index + 1).ok();
-        writeln!(p, "*Figure: {}*\n", ch.figure.why).ok();
+        let caption = match ch.figure.recipe.as_str() {
+            "dependency_graph" => format!("The import structure inside {}: most files lean on one hub.", ch.title),
+            _ => format!("A few files carry most of the code in {}.", ch.title),
+        };
+        writeln!(p, "*Figure: {caption}*\n").ok();
         writeln!(p, "What you can now do: open any file in `{}` and place it on this chapter's figure.\n", ch.title).ok();
     }
 

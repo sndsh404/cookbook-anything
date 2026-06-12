@@ -43,6 +43,13 @@ def lint(text: str) -> list[dict]:
         findings.append({"severity": "P1", "rule": "prose-emdash",
                          "text": f"em dash at line {line}"})
 
+    # a redaction marker in shipped prose means the writer quoted a span the
+    # secret filter had to mutilate (M4 review, issue 1)
+    for m in re.finditer(r"\[REDACTED:", body):
+        line = body[:m.start()].count("\n") + 1
+        findings.append({"severity": "P1", "rule": "prose-redaction-artifact",
+                         "text": f"redaction artifact in prose at line {line}"})
+
     # every figure image needs a takeaway caption line right after it
     lines = body.splitlines()
     for i, ln in enumerate(lines):
