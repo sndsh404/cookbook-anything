@@ -40,7 +40,7 @@ extractor or an honest "unverified" marker, never a more confident prompt.
 
 ## Milestone checklist (tick only after assess.py verifies)
 
-- [ ] M0 intake + trace + secret filter: 3 source types parse with traces;
+- [x] M0 intake + trace + secret filter: 3 source types parse with traces;
       12 planted secrets, 0 leaks; rerun on unchanged sources reparses 0
 - [ ] M1 compile: model validates on a real repo; 100% edges have extractors;
       100% claims have spans; 0 danglers; planted proposed edge < 1.0
