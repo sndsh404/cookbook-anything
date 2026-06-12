@@ -161,6 +161,10 @@ pub struct SourceRec {
     pub sha256: String,
     #[serde(default)]
     pub ingested_at: String,
+    /// per-file content hashes for folder sources; what makes a one-file
+    /// change re-parse one file instead of the whole tree (M5)
+    #[serde(default)]
+    pub files: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-# WORKFLOW.md — the session loop
+# WORKFLOW.md: the session loop
 
 This repo runs on a four-document system plus an objective harness. The loop
 is the same every session, no exceptions.
@@ -14,11 +14,11 @@ is the same every session, no exceptions.
 
 ## Supporting state
 
-- `quality_reports/assessment_latest.md` — output of the last `assess.py` run.
-- `quality_reports/checkpoints/YYYY-MM-DD-<slug>.md` — one per milestone or
+- `quality_reports/assessment_latest.md`: output of the last `assess.py` run.
+- `quality_reports/checkpoints/YYYY-MM-DD-<slug>.md`: one per milestone or
   significant session: what shipped, the number that moved, decisions made.
-- `quality_reports/session_logs/` — running log per session.
-- `.claude/state/last_assessment.json` — machine-readable last score, for
+- `quality_reports/session_logs/`: running log per session.
+- `.claude/state/last_assessment.json`: machine-readable last score, for
   regression detection. Gitignored; the markdown report is the durable record.
 
 ## The session loop

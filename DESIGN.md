@@ -244,7 +244,7 @@ basic PII redaction; full row ingestion opt-in and logged).
 Every stage prints progress (`[Stage N/7] name...`, batch counters, one-line
 completion summaries).
 
-### Stage 0 — ACQUIRE (autonomous, budgeted, license-gated)
+### Stage 0: ACQUIRE (autonomous, budgeted, license-gated)
 
 Two modes. **Seed mode**: user gives URLs/topics up front. **Demand mode**:
 during PLAN or FIGURE an agent files a typed **asset request** and Stage 0
@@ -285,7 +285,7 @@ it silently.
 Exit condition: every fetched item has an archive copy, an audit entry, and
 (for media) a license record; zero robots.txt violations; budgets respected.
 
-### Stage 1 — INTAKE (deterministic only; no agent)
+### Stage 1: INTAKE (deterministic only; no agent)
 
 `intake.py` walks `sources/`, routes each item to a parser by type, runs the
 secret filter, and writes the source manifest plus a per-source trace
@@ -295,7 +295,7 @@ is what makes a wrong paper debuggable.
 Exit condition: a manifest where every source has a parser, a hash, and a
 trace; zero secrets in any span (verified by a planted-secret test, M0).
 
-### Stage 2 — COMPILE (scripts extract; agents annotate; script merges; agent reviews residue)
+### Stage 2: COMPILE (scripts extract; agents annotate; script merges; agent reviews residue)
 
 1. **Extract.** `extract_code.py` (imports, defines, contains; calls where
    supported), `extract_doc.py` (section graph), `extract_data.py` (schema
@@ -310,7 +310,7 @@ trace; zero secrets in any span (verified by a planted-secret test, M0).
 Exit condition: model.json validates; 100% of edges have extractors; 100% of
 claims have spans; zero unresolved dangling references.
 
-### Stage 3 — PLAN (script computes structure; agent designs pedagogy)
+### Stage 3: PLAN (script computes structure; agent designs pedagogy)
 
 `topology.py` computes entry points, dependency chains, centrality, clusters.
 Then the planner turns topology into a chapter plan: dependency order (no
@@ -321,7 +321,7 @@ figure unless a written reason is recorded), concept pages with many parents.
 Exit condition: every chapter lists its node IDs, figure plan, prerequisite
 chapters; the prerequisite graph is acyclic.
 
-### Stage 4 — WRITE (agent drafts; script lints; agents audit)
+### Stage 4: WRITE (agent drafts; script lints; agents audit)
 
 Writer drafts strictly from the model with inline claim markers
 (`{{c:0317}}`), stripped only at ship time after verification. Three passes:
@@ -344,7 +344,7 @@ to note, dive deep*. The list lives in `lint_prose.py`.
 Exit condition: claim coverage >= 95% of factual sentences; zero P0 prose
 lints; humanize pass complete with an inspectable diff.
 
-### Stage 5 — FIGURE
+### Stage 5: FIGURE
 
 For each planned figure: declare the Figure Read, pull the payload from the
 model (provenance-checked), pick the recipe, render, run `figcheck.py`, then
@@ -355,7 +355,7 @@ Exit condition: every figure passes figcheck with zero P0/P1; payload
 provenance verifies; every figure referenced from prose with a takeaway
 caption.
 
-### Stage 6 — SHIP
+### Stage 6: SHIP
 
 Assemble `paper.md` (anatomy §8), render figures at final resolution, run
 `grade.py`; ship only at or above the gate. Strip claim markers; emit the
@@ -524,25 +524,25 @@ whenever a critic or rule changes.
 
 ## 10. Milestones
 
-**M0 — Intake + trace + secret filter.** Three source types (git repo, PDF,
+**M0: Intake + trace + secret filter.** Three source types (git repo, PDF,
 mixed folder), manifest + per-source traces. *Done when:* all three parse
 with traces; 12 planted secrets yield 0 leaks into spans; re-running on
 unchanged sources does zero re-parsing.
 
-**M1 — Compile: the model with both rules enforced.** Extractors for one code
+**M1: Compile: the model with both rules enforced.** Extractors for one code
 language, markdown/PDF sections, CSV schema; analyzer batching; merge +
 review. *Done when:* on a real mid-size repo, model.json validates; 100% of
 edges carry extractors; 100% of claims carry spans; 0 unresolved danglers; a
 planted agent-proposed edge lands at confidence < 1.0.
 
-**M2 — The figure system, calibrated.** style.py both modes, six recipes
+**M2: The figure system, calibrated.** style.py both modes, six recipes
 (`architecture_box`, `dataflow`, `dependency_graph`, `pipeline_stages`,
 `annotated_code`, `quantity`), figcheck.py, the critic, seeded defects.
 *Done when:* critic catches >= 9/10 planted defects citing correct rule IDs;
 provenance check rejects a hallucinated edge; same payload renders in both
 modes; all six recipes pass F-01..F-14 on real model data.
 
-**M2.5 — Autonomous acquisition, license-gated.** acquire.py (robots, rate
+**M2.5: Autonomous acquisition, license-gated.** acquire.py (robots, rate
 limits, cache, audit, budgets), ladder rungs 1-2, archive-on-fetch, license
 gate vs Commons API, asset records, F-13/F-14 checks. *Done when:* demand-mode
 request fetches a Commons image with API-verified license and auto
@@ -551,19 +551,19 @@ rejected; all-rights-reserved is rejected and converted to a figure request; a
 screenshot ships framed with URL + date; audit shows 0 robots violations and
 0 off-allowlist fetches across a 50-page seeded crawl; re-run fetches 0 pages.
 
-**M3 — Plan + write with the leash on.** topology.py, planner, writer with
+**M3: Plan + write with the leash on.** topology.py, planner, writer with
 claim markers, claim-verifier, lint_prose.py, humanize pass. *Done when:*
 chapter order respects the prerequisite graph (acyclic); claim coverage >=
 95% on a full draft; 0 banned words, 0 em dashes; the verifier flags a
 deliberately unsupported planted sentence.
 
-**M4 — Ship a real paper.** Full pipeline on one real codebase, grade.py
+**M4: Ship a real paper.** Full pipeline on one real codebase, grade.py
 wired. *Done when:* paper ships at grade >= 80 with page-one figure, every
 chapter figured or excused, claims + unverified appendices emitted, and a
 human files at least three concrete issues that become seeded defects or
 rules.
 
-**M5 — The compounding loop.** Incremental re-runs and supersession. *Done
+**M5: The compounding loop.** Incremental re-runs and supersession. *Done
 when:* a one-file change re-ships with < 20% of full-run work (stage
 timings); a contradicting edit produces a superseded claim correctly linked;
 runs.jsonl reconstructs one claim's history across three runs.

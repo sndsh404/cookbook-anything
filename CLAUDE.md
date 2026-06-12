@@ -1,4 +1,4 @@
-# CLAUDE.md — operating guide
+# CLAUDE.md: operating guide
 
 ## Prime directive
 

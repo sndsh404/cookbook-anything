@@ -1,4 +1,4 @@
-# MEMORY.md — durable lessons
+# MEMORY.md: durable lessons
 
 Append-only `[LEARN:tag]` entries. Read at session start; written after every
 milestone or surprise.
