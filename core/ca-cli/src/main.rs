@@ -6,6 +6,7 @@
 //!   ca validate <model.json>
 //!   ca grade <workspace_dir>
 
+mod admit;
 mod plan;
 mod verify;
 mod write;
@@ -28,12 +29,65 @@ fn main() -> ExitCode {
         Some("write") if args.len() >= 4 => cmd_write(&args[1], &args[2], &args[3], &args[4..]),
         Some("verify") if args.len() == 3 => cmd_verify(&args[1], &args[2]),
         Some("validate") if args.len() == 2 => cmd_validate(&args[1]),
+        Some("admit") if args.len() == 3 => cmd_admit(&args[1], &args[2]),
         Some("grade") if args.len() == 2 => cmd_grade(&args[1]),
         _ => {
             eprintln!("{usage}");
             ExitCode::from(2)
         }
     }
+}
+
+fn cmd_admit(cookbook: &str, findings_path: &str) -> ExitCode {
+    let cb = PathBuf::from(cookbook);
+    let mut model = match Model::load(&cb.join("model.json")) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("admit: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let file: admit::FindingsFile = match std::fs::read_to_string(findings_path)
+        .map_err(|e| e.to_string())
+        .and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string()))
+    {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("admit: cannot read findings: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let rep = admit::admit(&mut model, file);
+    let errors = model.validate();
+    if !errors.is_empty() {
+        eprintln!("admit: model invalid after admission, refusing to save: {errors:?}");
+        return ExitCode::FAILURE;
+    }
+    if let Err(e) = model.save(&cb.join("model.json")) {
+        eprintln!("admit: save failed: {e}");
+        return ExitCode::FAILURE;
+    }
+    if let Ok(mut runs) =
+        std::fs::OpenOptions::new().create(true).append(true).open(cb.join("runs.jsonl"))
+    {
+        let _ = writeln!(
+            runs,
+            "{}",
+            serde_json::json!({"at": ca_extract::intake::now_iso(), "stage": "admit",
+                "admitted": rep.admitted, "supported": rep.supported,
+                "contradictions": rep.contradictions, "rejected": rep.rejected.len(),
+                "events": rep.events})
+        );
+    }
+    for r in &rep.rejected {
+        println!("  REJECTED {r}");
+    }
+    println!(
+        "{}",
+        serde_json::json!({"admitted": rep.admitted, "supported": rep.supported,
+            "contradictions": rep.contradictions, "rejected": rep.rejected.len()})
+    );
+    ExitCode::SUCCESS
 }
 
 fn cmd_plan(cookbook: &str) -> ExitCode {
