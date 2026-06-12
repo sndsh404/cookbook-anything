@@ -1,6 +1,6 @@
-# Assessment - 2026-06-12T13:59:02.934924+00:00
+# Assessment - 2026-06-12T14:02:13.688762+00:00
 
-**Score: 100/100** (green)
+**Score: 99/100** (green)
 
 ## Headline numbers
 
@@ -26,11 +26,14 @@
 - `m3_emdashes` = 0.0 (want down, from test_m3_write.py)
 - `m3_planted_flagged` = 1.0 (want up, from test_m3_write.py)
 - `m3_prose_defects_caught` = 10.0 (want up, from test_m3_write.py)
+- `m4_chapters_figured` = 4.0 (want up, from test_m4_ship.py)
+- `m4_figure_p0` = 0.0 (want down, from test_m4_ship.py)
+- `m4_grade` = 90.0 (want up, from test_m4_ship.py)
 - `secrets_leaked` = 0.0 (want down, from test_m0_intake.py)
 
 ## Findings
 
-- none
+- **P2** (-1) M4 gate passes but box is unticked (tick it)
 
 ## Regressions
 
