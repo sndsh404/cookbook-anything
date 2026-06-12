@@ -1,4 +1,4 @@
-"""payload.py - the figure data contract (DESIGN 6.4).
+"""payload.py - the figure data contract (DESIGN 5.4).
 
 A FigurePayload may contain ONLY: model node IDs, model edge references,
 span-backed quantities, and layout hints. figcheck verifies every reference

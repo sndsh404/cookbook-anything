@@ -1,4 +1,4 @@
-//! Schema-first extractor for tabular/SQL sources (DESIGN 4): tables,
+//! Schema-first extractor for tabular/SQL sources (DESIGN 3): tables,
 //! columns, types, foreign keys, row counts. Row values never enter here.
 
 use crate::ExtractOut;

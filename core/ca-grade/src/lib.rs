@@ -1,4 +1,4 @@
-//! ca-grade: the scored gate (DESIGN 9.1). Start at 100, deduct by severity.
+//! ca-grade: the scored gate (DESIGN 8.1). Start at 100, deduct by severity.
 //! The skill may not override this; a red grade cannot ship.
 //!
 //! Model/claim/provenance checks live here in Rust. Image-level checks come

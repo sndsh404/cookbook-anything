@@ -1,4 +1,4 @@
-"""figcheck.py - the form firewall's mechanical battery (DESIGN 6.5).
+"""figcheck.py - the form firewall's mechanical battery (DESIGN 5.5).
 
 Checks rendered figures against the rule catalog F-01..F-14, judging the
 sidecar facts (introspected from the real artist tree) plus model.json.

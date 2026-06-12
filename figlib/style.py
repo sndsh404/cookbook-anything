@@ -1,4 +1,4 @@
-"""style.py - the house style. One file, two modes, both locked (DESIGN 6.1).
+"""style.py - the house style. One file, two modes, both locked (DESIGN 5.1).
 
 The palette is semantic, named, and closed. The default matplotlib cycle is
 banned outright; figcheck enforces that every rendered color resolves to

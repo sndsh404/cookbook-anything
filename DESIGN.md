@@ -33,33 +33,6 @@ hallucinated and we shrug." If you find yourself letting an agent assert a fact
 or draw an edge that no script extracted, stop: the fix is a better extractor
 or an honest "unverified" marker, never a more confident prompt.
 
----
-
-## 1. Lineage
-
-Built by extracting the load-bearing pattern from the studied systems. The
-mapping is the design, not decoration:
-
-| Source | Pattern taken | Becomes |
-|---|---|---|
-| Karpathy LLM Wiki gist (v2) | compile don't re-derive; claims carry citations + confidence; supersession; secret-filter on ingest; audit trail | the knowledge model and its lifecycle |
-| llmwiki | deterministic index + a tiny fixed tool surface; restraint | the model store and its access API |
-| Understand-Anything | scan/batch/parallel-analyze/merge+review pipeline; topology script before pedagogy; incremental updates; progress reporting; "a graph that quietly teaches" | the compile and plan stages |
-| coroot | the map is derived from measured structure, zero config, no blind spots; predefined inspections | structure graphs come from extractors only; hallucinated edges are impossible by construction |
-| WeKnora | pluggable per-source parsers; parsing trace timeline; parent-child chunking | the intake stage and its observability |
-| Trilium | one note, many parents (clones); typed attributes | concept pages written once, placed in many chapters |
-| WritingAIPaper | CARS introduction; page-one figure; confusion time; topic sentences; reviewer-comment rubric | the document architecture and prose lints |
-| humanizer | signs-of-AI-writing catalog; rewrite don't delete; voice calibration from a sample; "sterile is also slop" | the prose firewall |
-| taste-skill | brief inference (declare the read first); explicit dials; anti-default discipline; hard rules with named failure modes | the Figure Read protocol and the figure rule catalog |
-| matplotlib-gallery | a curated catalog by chart type; publication settings | the house recipe library: choose a recipe, don't improvise |
-| claude-code-my-workflow | computed label positions (six-pass collision protocol); semantic visual conventions; scripted quality score with severity deductions; claim-verifier; critics that cite the rule | the figure QA loop and the grading harness |
-| scrapy | the politeness middleware stack: robots.txt, retry/backoff, HTTP cache, offsite scoping, throttling | the deterministic floor of autonomous acquisition |
-| firecrawl | URL to clean LLM-ready markdown / screenshot / structured JSON | the canonical web ingestion formats |
-| Scrapling | adaptive parsing that relocates elements when sites change; a tiered fetch ladder | selector self-healing on incremental re-runs; escalate fetch cost only on failure |
-| Scrapegraph-ai | declare a schema, the pipeline fills it from the page | asset requests as typed payloads, not "go scrape something" |
-| Scrape-anything web agent | screenshot, look, decide: vision-guided browsing when structure fails | the last rung of the fetch ladder |
-| medium2pdf-scraper | archive web content as durable searchable PDFs at fetch time | archive-on-fetch, so spans survive web rot |
-
 **Honest prior art.** DeepWiki, Devin's wiki features, repo-explainer tools,
 and "chat with your codebase" products all exist. What none of them center,
 and what cookbook-anything's three defensible contributions are: (1) the **figure
@@ -73,7 +46,7 @@ is good engineering; those three are the thesis.
 
 ---
 
-## 2. System shape
+## 1. System shape
 
 ```
             TRUTH FIREWALL                          FORM FIREWALL
@@ -100,7 +73,7 @@ sources, the compiled model, and the outputs.
 
 ---
 
-## 3. Workspace and repo layout
+## 2. Workspace and repo layout
 
 ```
 cookbook-anything/
@@ -120,12 +93,12 @@ cookbook-anything/
     grade.py         # the scored gate (assess.py pattern)
   figlib/
     style.py         # the house style: rcParams, palette, both modes (print/sketch)
-    recipes/         # one module per recipe (see §6.3)
-    seeded_defects/  # known-bad figures for critic calibration (see §9.2)
+    recipes/         # one module per recipe (see §5.3)
+    seeded_defects/  # known-bad figures for critic calibration (see §8.2)
   workspace/         # per-project; gitignored
     sources/         # the user's inputs (or pointers to them)
     .cookbook/         # the compiled model + trace + ledger (persists across runs)
-      model.json     # the knowledge model (§4)
+      model.json     # the knowledge model (§3)
       trace/         # per-source parsing timelines
       runs.jsonl     # audit trail of every operation
     out/
@@ -137,7 +110,7 @@ cookbook-anything/
 
 ---
 
-## 4. The knowledge model
+## 3. The knowledge model
 
 One JSON document (sharded by kind on disk once large), with six record
 types. This schema is the contract every stage reads and writes. Nothing in
@@ -239,7 +212,7 @@ basic PII redaction; full row ingestion opt-in and logged).
 
 ---
 
-## 5. The pipeline, stage by stage
+## 4. The pipeline, stage by stage
 
 Every stage prints progress (`[Stage N/7] name...`, batch counters, one-line
 completion summaries).
@@ -357,7 +330,7 @@ caption.
 
 ### Stage 6: SHIP
 
-Assemble `paper.md` (anatomy §8), render figures at final resolution, run
+Assemble `paper.md` (anatomy §7), render figures at final resolution, run
 `grade.py`; ship only at or above the gate. Strip claim markers; emit the
 claims appendix and the unverified-edges appendix. Append the run to
 `runs.jsonl`.
@@ -369,9 +342,9 @@ re-ships touching < 20% of the pipeline work (M5).
 
 ---
 
-## 6. The figure system
+## 5. The figure system
 
-### 6.1 House style
+### 5.1 House style
 
 One `figlib/style.py`, two modes, both locked:
 
@@ -391,7 +364,7 @@ dashed).
 **Direct labeling over legends.** Boxed legend over data is F-07. Legends only
 when > ~6 series, frameless, outside the axes.
 
-### 6.2 The Figure Read (declare before drawing)
+### 5.2 The Figure Read (declare before drawing)
 
 Before rendering, the figure stage writes one line into the figure metadata:
 "Reading this as: a *dataflow* figure for *newcomers*, 7 nodes from
@@ -404,7 +377,7 @@ Anti-default discipline: no default color cycle, no jet/rainbow (viridis only
 for true continuous fields), no `figsize=(6.4, 4.8)` reflex, no title
 restating the caption, no 3D unless data is 3D, no pie charts, no dual y-axes.
 
-### 6.3 The recipe library (v0 ships twelve; M2 lands six)
+### 5.3 The recipe library (v0 ships twelve; M2 lands six)
 
 | Recipe | Use when | Payload (from the model) |
 |---|---|---|
@@ -424,7 +397,7 @@ restating the caption, no 3D unless data is 3D, no pie charts, no dual y-axes.
 Every recipe enforces the **one-idea rule**: one point per figure, stated in
 the caption. Density beyond a recipe's ceiling forces clustering or a split.
 
-### 6.4 The figure data contract
+### 5.4 The figure data contract
 
 A recipe's payload may contain **only**: model node IDs, model edge
 references, span-backed quantities, layout hints. The renderer embeds the
@@ -433,7 +406,7 @@ every node exists in the model; every edge exists (or confidence < 1.0 AND
 dashed); every number carries a span reference. A figure that draws an arrow
 the model does not contain fails F-01 and cannot ship.
 
-### 6.5 The rule catalog and the critic loop
+### 5.5 The rule catalog and the critic loop
 
 | ID | Severity | Rule |
 |---|---|---|
@@ -457,7 +430,7 @@ Loop per figure: render → figcheck (mechanical) → critic on the PNG (visual)
 
 ---
 
-## 7. The writing system (contracts)
+## 6. The writing system (contracts)
 
 - **Claim coverage >= 95%** of factual sentences resolve to claims with spans.
 - **Confusion-time lints**: first use defined within 50 words or linked; topic
@@ -469,7 +442,7 @@ Loop per figure: render → figcheck (mechanical) → critic on the PNG (visual)
 
 ---
 
-## 8. The paper spec
+## 7. The paper spec
 
 `paper.md` (plus `figures/`, optional `paper.docx`), in order:
 
@@ -488,9 +461,9 @@ Loop per figure: render → figcheck (mechanical) → critic on the PNG (visual)
 
 ---
 
-## 9. Quality: the gate and the calibration
+## 8. Quality: the gate and the calibration
 
-### 9.1 `grade.py` (the scored gate)
+### 8.1 `grade.py` (the scored gate)
 
 Start at 100, deduct by severity; the skill may not override the script:
 
@@ -511,7 +484,7 @@ Start at 100, deduct by severity; the skill may not override the script:
 Gates: **80 ships with warnings listed; 90 is the target; below 80 does not
 ship.** A red grade cannot be pushed or delivered silently.
 
-### 9.2 Critic calibration by seeded defects
+### 8.2 Critic calibration by seeded defects
 
 `figlib/seeded_defects/` holds figures with known planted violations (default
 palette, a label collision, a legend over data, an edge absent from a toy
@@ -522,7 +495,7 @@ whenever a critic or rule changes.
 
 ---
 
-## 10. Milestones
+## 9. Milestones
 
 **M0: Intake + trace + secret filter.** Three source types (git repo, PDF,
 mixed folder), manifest + per-source traces. *Done when:* all three parse
@@ -576,7 +549,7 @@ change a file and the paper updates without starting over.
 
 ---
 
-## 11. Non-goals for v0
+## 10. Non-goals for v0
 
 No web dashboard. No embeddings/hybrid search. No memory decay/consolidation
 tiers. No video/audio or OCR-heavy ingestion. No image-generation figures.
@@ -585,7 +558,7 @@ CAPTCHAs, anti-bot arms race, or industrial crawling.
 
 ---
 
-## 12. Honest seams
+## 11. Honest seams
 
 1. The critic loop is the novel, unproven part; the seeded-defect gate exists
    for exactly that reason, and M2 lands early on purpose.
@@ -601,7 +574,7 @@ CAPTCHAs, anti-bot arms race, or industrial crawling.
 
 ---
 
-## 13. After v0
+## 12. After v0
 
 v1: the reader model (per-audience confusion budgets and chapter depth).
 v2: the critic's rule catalog grows from filed reader issues.

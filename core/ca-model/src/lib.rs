@@ -1,4 +1,4 @@
-//! ca-model: the knowledge model (DESIGN 4), with the invariants encoded in
+//! ca-model: the knowledge model (DESIGN 3), with the invariants encoded in
 //! the type system so they cannot be violated at compile time:
 //!
 //!   - an `Edge` cannot be constructed without an `ExtractorId`

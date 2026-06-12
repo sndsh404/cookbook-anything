@@ -1,7 +1,7 @@
 # Seeded prose corpus
 
 Ten violations planted on purpose. The prose lints must catch 10/10
-(DESIGN 9.2). Expected: 7 prose-banned, 1 prose-emdash, 1 F-05, 1 prose-long.
+(DESIGN 8.2). Expected: 7 prose-banned, 1 prose-emdash, 1 F-05, 1 prose-long.
 
 ## A slop paragraph
 

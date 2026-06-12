@@ -25,7 +25,7 @@ is the same every session, no exceptions.
 
 1. **Orient.** Read CLAUDE.md (checklist), the latest assessment, and the last
    checkpoint. Pick the first unchecked milestone.
-2. **Restate the number.** Every milestone ends in a number (DESIGN §10). Say
+2. **Restate the number.** Every milestone ends in a number (DESIGN §9). Say
    it before writing code. If the criterion has no number, pick the closest
    verifiable proxy and record that decision.
 3. **Study the pattern.** The reference repos exist so we extract patterns,

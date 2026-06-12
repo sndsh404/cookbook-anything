@@ -1,4 +1,4 @@
-"""The house recipe library (DESIGN 6.3). Freeform matplotlib is how slop
+"""The house recipe library (DESIGN 5.3). Freeform matplotlib is how slop
 happens; the figure stage selects from this closed registry. Every recipe is
 a function (payload, model) -> Figure with the house style baked in and the
 one-idea rule enforced by its layout ceiling.

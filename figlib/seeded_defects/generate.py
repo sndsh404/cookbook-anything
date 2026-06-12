@@ -1,5 +1,5 @@
 """Seeded defects: ten figures, each with one violation planted on purpose.
-A critic is only trusted after it demonstrably catches these (DESIGN 9.2).
+A critic is only trusted after it demonstrably catches these (DESIGN 8.2).
 The figures bypass the recipe library deliberately (freeform matplotlib is
 exactly how these defects happen in the wild) but write honest sidecars via
 the same introspector the real renderer uses.
