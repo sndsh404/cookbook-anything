@@ -2,127 +2,140 @@
 
 ## TL;DR
 
-This codebase compiles to a model of 68 files and 204 functions, every one traced to source. The tour below walks 6 areas in dependency order, so nothing is used before it is taught.
+This is a tour of cookbook-anything, compiled from its own source into a model of 68 files and 204 functions, every sentence below traceable to a span. Each chapter takes one area, shows the problem it solves, and walks a real path through the code, so by the end you can change it yourself.
 
 ![the system in one figure](figures/fig_page_one.png)
 
-*Figure: The clusters of this codebase and which ones depend on which.*
+*Figure: the layers of cookbook-anything. Each cluster is a box; the chapters that follow open them up one at a time.*
 
 ## Introduction
 
-Deterministic code establishes ground truth; the LLM does judgment on top. The name says the contract: hand it anything, get a cookbook back. It is a **compiler with two firewalls**. 
+Read it like this: the source is compiled into a model, and every sentence here is pinned to a span in that model. In the project's own words:
 
-Read the chapters in order; each one assumes only what came before it. Use the cookbook section at the end to turn the tour into runnable steps.
+Deterministic code establishes ground truth; the LLM does judgment on top. It is a **compiler with two firewalls**. For each planned figure: declare the Figure Read, pull the payload from the model (provenance-checked), pick the recipe, render, run `figcheck.py`, then the critic inspects the actual rendered image and either passes it or cites rule IDs. 
+
+Read the chapters in order; each assumes only what came before. Use the cookbook at the end to turn the tour into commands.
 
 Chapter map:
 
-- Chapter 1: (root)
+- Chapter 1: runner
 - Chapter 2: core
-- Chapter 3: quality_reports
-- Chapter 4: runner
-- Chapter 5: figlib
-- Chapter 6: tests
+- Chapter 3: figlib
+- Chapter 4: tests
 
-## Chapter 1: (root)
+## Chapter 1: runner
 
-The (root) area holds 5 files of this codebase.
+See why this area exists, in the project's own words:
 
-- `CLAUDE.md` (no docstring; see the source span in the claims appendix)
-- `DESIGN.md` (no docstring; see the source span in the claims appendix)
-- `MEMORY.md` (no docstring; see the source span in the claims appendix)
-- `README.md` (no docstring; see the source span in the claims appendix)
-- `WORKFLOW.md` (no docstring; see the source span in the claims appendix)
+Exit condition: every fetched item has an archive copy, an audit entry, and (for media) a license record; zero robots.txt violations; budgets respected. The part that keeps it honest is not the swarm at all, it is the single admission gate: workers propose, ca admit re-verifies every span reference, so a sloppy worker can only waste its own time. See `DESIGN.md` for the full spec and milestone gates (M0..M5), `CLAUDE.md` for the operating guide, and `quality_reports/` for the audit trail of every session. 
 
-![chapter figure](figures/fig_ch1.png)
+At the center of `runner` is `acquire.ts`: defines `Ctx`, `archivePage`, `arg`.
 
-*Figure: A few files carry most of the code in (root).*
+Follow one real path through runner: start at `acquire.ts`, which reaches into `html2md.ts`.
 
-What you can now do: open any file in `(root)` and place it on this chapter's figure.
+![how the pieces talk](figures/fig_ch1.png)
+
+*Figure: the path from `acquire.ts` to `html2md.ts`. Each box hands off to the next, so changing one tells you exactly what downstream it can touch.*
+
+The pieces that matter here:
+
+- `acquire.ts`: defines `Ctx`, `archivePage`, `arg`
+- `html2md.ts`: defines `decodeEntities`, `htmlToMarkdown`
+- `infra.ts`: defines `Audit`, `Budget`, `HttpCache`
+- `license.ts`: defines `CommonsMeta`, `GateVerdict`, `LicenseRecord`
+- `robots.ts`: defines `RobotsRules`, `isAllowed`, `parseRobots`
+
+What you can now do: open `acquire.ts` and follow the calls above to see how `runner` does its job end to end.
 
 ## Chapter 2: core
 
-The core area holds 16 files of this codebase.
+See why this area exists, in the project's own words:
 
-- `core/ca-cli/src/admit.rs` (no docstring; see the source span in the claims appendix)
-- `core/ca-cli/src/main.rs` (no docstring; see the source span in the claims appendix)
-- `core/ca-cli/src/plan.rs` (no docstring; see the source span in the claims appendix)
-- `core/ca-cli/src/verify.rs` (no docstring; see the source span in the claims appendix)
-- `core/ca-cli/src/write.rs` (no docstring; see the source span in the claims appendix)
+Exit condition: model.json validates; 100% of edges have extractors; 100% of claims have spans; zero unresolved dangling references. Exit condition: a manifest where every source has a parser, a hash, and a trace; zero secrets in any span (verified by a planted-secret test, M0). Secret hygiene: `intake.py` strips API keys, tokens, passwords, and high-entropy strings *before* anything reaches spans, and logs what it redacted (count and kind, never the value). 
 
-![chapter figure](figures/fig_ch2.png)
+At the center of `core` is `ca-model/lib.rs`: defines `Asset`, `Claim`, `ClaimStatus`.
 
-*Figure: A few files carry most of the code in core.*
+Follow one real path through core: start at `main.rs`, which reaches into `ca-extract/lib.rs`, which reaches into `ca-model/lib.rs`.
 
-What you can now do: open any file in `core` and place it on this chapter's figure.
+![how the pieces talk](figures/fig_ch2.png)
 
-## Chapter 3: quality_reports
+*Figure: the path from `main.rs` to `ca-model/lib.rs`. Each box hands off to the next, so changing one tells you exactly what downstream it can touch.*
 
-The quality_reports area holds 11 files of this codebase.
+The pieces that matter here:
 
-- `quality_reports/assessment_latest.md` (no docstring; see the source span in the claims appendix)
-- `quality_reports/checkpoints/2026-06-11-m0-intake.md` (no docstring; see the source span in the claims appendix)
-- `quality_reports/checkpoints/2026-06-11-m1-compile.md` (no docstring; see the source span in the claims appendix)
-- `quality_reports/checkpoints/2026-06-12-m2-figures.md` (no docstring; see the source span in the claims appendix)
-- `quality_reports/checkpoints/2026-06-12-m25-acquire.md` (no docstring; see the source span in the claims appendix)
+- `ca-model/lib.rs`: defines `Asset`, `Claim`, `ClaimStatus`
+- `main.rs`: defines `cmd_admit`, `cmd_compile`, `cmd_grade`
+- `plan.rs`: defines `Chapter`, `FigurePlan`, `Plan`
+- `write.rs`: defines `WriteOut`, `coverage_json`, `mint`
+- `ca-extract/lib.rs`: defines `ExtractOut`, `add_span`, `default`
 
-![chapter figure](figures/fig_ch3.png)
+What you can now do: open `main.rs` and follow the calls above to see how `core` does its job end to end.
 
-*Figure: A few files carry most of the code in quality_reports.*
+## Chapter 3: figlib
 
-What you can now do: open any file in `quality_reports` and place it on this chapter's figure.
+See why this area exists, in the project's own words:
 
-## Chapter 4: runner
+Exit condition: every figure passes figcheck with zero P0/P1; payload provenance verifies; every figure referenced from prose with a takeaway caption. The **fetch ladder** (cheapest first, escalate only on failure): (1) static HTTP fetch rendered to clean markdown; (2) headless render for JS-heavy pages (also produces screenshots); (3) vision-guided browsing only when structure fails and only within budget. Screenshots are citation evidence, not decoration: browser-chrome frame stamped with URL and access date, minimal size, source always carried. 
 
-The runner area holds 8 files of this codebase.
+At the center of `figlib` is `style.py`: the house style.
 
-- `runner/acquire/acquire.ts` (no docstring; see the source span in the claims appendix)
-- `runner/acquire/html2md.ts` (no docstring; see the source span in the claims appendix)
-- `runner/acquire/infra.ts` (no docstring; see the source span in the claims appendix)
-- `runner/acquire/license.ts` (no docstring; see the source span in the claims appendix)
-- `runner/acquire/robots.ts` (no docstring; see the source span in the claims appendix)
+Follow one real path through figlib: start at `figures_from_plan.py`, which reaches into `figcheck.py`.
 
-![chapter figure](figures/fig_ch4.png)
+![how the pieces talk](figures/fig_ch3.png)
 
-*Figure: A few files carry most of the code in runner.*
+*Figure: the path from `figures_from_plan.py` to `figcheck.py`. Each box hands off to the next, so changing one tells you exactly what downstream it can touch.*
 
-What you can now do: open any file in `runner` and place it on this chapter's figure.
+The pieces that matter here:
 
-## Chapter 5: figlib
+- `style.py`: the house style
+- `render.py`: render one FigurePayload through its recipe
+- `figures_from_plan.py`: build FigurePayloads from plan.json + model.json
+- `introspect.py`: facts about a rendered figure, taken from the live artist
+- `payload.py`: the figure data contract (DESIGN 5.4)
 
-The figlib area holds 18 files of this codebase.
+What you can now do: open `figures_from_plan.py` and follow the calls above to see how `figlib` does its job end to end.
 
-- `figlib/constants.py` says of itself: "constants.py - house style constants with NO matplotlib import, so the".
-- `figlib/figcheck.py` says of itself: "figcheck.py - the form firewall's mechanical battery (DESIGN 5.5)".
-- `figlib/figures_from_plan.py` says of itself: "figures_from_plan.py - build FigurePayloads from plan.json + model.json,".
-- `figlib/introspect.py` says of itself: "introspect.py - facts about a rendered figure, taken from the live artist".
-- `figlib/lint_prose.py` says of itself: "lint_prose.py - deterministic prose lints (DESIGN stage 4, pass 2)".
+## Chapter 4: tests
 
-![chapter figure](figures/fig_ch5.png)
+See why this area exists, in the project's own words:
 
-*Figure: The import structure inside figlib: most files lean on one hub.*
+Assemble `paper.md` (anatomy §7), render figures at final resolution, run `grade.py`; ship only at or above the gate. The paper is a view over the compiled model. Public domain/CC0: free, provenance recorded. 
 
-What you can now do: open any file in `figlib` and place it on this chapter's figure.
+At the center of `tests` is `ca.py`: locate and invoke the ca binary (the Rust core CLI).
 
-## Chapter 6: tests
+Follow one real path through tests: start at `test_m0_intake.py`, which reaches into `ca.py`.
 
-The tests area holds 9 files of this codebase.
+![how the pieces talk](figures/fig_ch4.png)
 
-- `tests/ca.py` says of itself: "Shared helper: locate and invoke the ca binary (the Rust core CLI)".
-- `tests/test_m0_intake.py` says of itself: "M0 gate: 3 source types parse with traces; 12 planted secrets -> 0 leaks".
-- `tests/test_m1_compile.py` says of itself: "M1 gate (Rust core): on a real mid-size repo (llmwiki, ~104 py + 9 sql".
-- `tests/test_m25_acquire.py` says of itself: "M2.5 gate: autonomous acquisition, license-gated".
-- `tests/test_m2_figures.py` says of itself: "M2 gate: the figure system, calibrated".
+*Figure: the path from `test_m0_intake.py` to `ca.py`. Each box hands off to the next, so changing one tells you exactly what downstream it can touch.*
 
-![chapter figure](figures/fig_ch6.png)
+The pieces that matter here:
 
-*Figure: The import structure inside tests: most files lean on one hub.*
+- `ca.py`: locate and invoke the ca binary (the Rust core CLI)
+- `test_m0_intake.py`: 3 source types parse with traces; 12 planted secrets -> 0 leaks
+- `test_m1_compile.py`: on a real mid-size repo (llmwiki, ~104 py + 9 sql
+- `test_m25_acquire.py`: autonomous acquisition, license-gated
+- `test_m3_write.py`: plan + write with the leash on
 
-What you can now do: open any file in `tests` and place it on this chapter's figure.
+What you can now do: open `test_m0_intake.py` and follow the calls above to see how `tests` does its job end to end.
 
 ## The cookbook
 
-1. Clone the repo and open the entry points listed below. (expected: the files exist at the cited spans) [unverified]
-2. Re-run the compile stage and diff model.json against the claims appendix. (expected: zero unresolved references) [unverified]
+Concrete tasks, each traced to the files you touch.
+
+### 1. Run it on a codebase
+
+```
+node --experimental-strip-types runner/stages.ts <sources-dir> <workspace> <name>
+```
+Edit: nothing. Run: `runner/stages.ts`. Expected: a graded paper at `<workspace>/out/paper.md` with figures. Verified by: `tests/test_m4_ship.py`.
+
+### 2. Add a figure recipe
+
+1. Create `figlib/recipes/yourrecipe.py` with a `render(payload, model)` function, modeled on `figlib/recipes/quantity.py`.
+2. Register it in `figlib/recipes/__init__.py` (the `registry()` map) and add its ceiling to `CEILINGS`.
+3. Expected: `python figlib/figcheck.py` passes your figure with provenance resolving to the model.
+4. Verified by: `tests/test_m2_figures.py` (the seeded-defect critic must stay at 10/10).
 
 ## Glossary
 
@@ -206,26 +219,37 @@ What you can now do: open any file in `tests` and place it on this chapter's fig
 - `c:0070` "One autonomous session, all milestones M0 through M5 shipped green." -> quality_reports/session_logs/2026-06-12-session-1.md#L3-L3
 - `c:0071` "Final assess: 100/100 green, no regressions." -> quality_reports/session_logs/2026-06-12-session-1.md#L17-L18
 - `c:0072` "Open items for the next session: planner folding of thin chapters (filed issue 5), the LLM vision critic on rendered PNGs (the judgment layer the seeded-defect gate was built to calibrate), playwright as fetch ladder rung 2, and the docx export." -> quality_reports/session_logs/2026-06-12-session-1.md#L26-L29
-- `c:w0001` "This codebase compiles to a model of 68 files and 204 functions, every one traced to source." -> CLAUDE.md
-- `c:w0002` "The tour below walks 6 areas in dependency order, so nothing is used before it is taught." -> CLAUDE.md
-- `c:w0003` "The (root) area holds 5 files of this codebase." -> CLAUDE.md, DESIGN.md, MEMORY.md, README.md
-- `c:w0004` "The core area holds 16 files of this codebase." -> core/ca-cli/src/admit.rs, core/ca-cli/src/main.rs, core/ca-cli/src/plan.rs, core/ca-cli/src/verify.rs
-- `c:w0005` "The quality_reports area holds 11 files of this codebase." -> quality_reports/assessment_latest.md, quality_reports/checkpoints/2026-06-11-m0-intake.md, quality_reports/checkpoints/2026-06-11-m1-compile.md, quality_reports/checkpoints/2026-06-12-m2-figures.md
-- `c:w0006` "The runner area holds 8 files of this codebase." -> runner/acquire/acquire.ts, runner/acquire/html2md.ts, runner/acquire/infra.ts, runner/acquire/license.ts
-- `c:w0007` "The figlib area holds 18 files of this codebase." -> figlib/constants.py, figlib/figcheck.py, figlib/figures_from_plan.py, figlib/introspect.py
-- `c:w0008` "`figlib/constants.py` says of itself: "constants.py - house style constants with NO matplotlib import, so the"." -> figlib/constants.py
-- `c:w0009` "`figlib/figcheck.py` says of itself: "figcheck.py - the form firewall's mechanical battery (DESIGN 5.5)"." -> figlib/figcheck.py
-- `c:w0010` "`figlib/figures_from_plan.py` says of itself: "figures_from_plan.py - build FigurePayloads from plan.json + model.json,"." -> figlib/figures_from_plan.py
-- `c:w0011` "`figlib/introspect.py` says of itself: "introspect.py - facts about a rendered figure, taken from the live artist"." -> figlib/introspect.py
-- `c:w0012` "`figlib/lint_prose.py` says of itself: "lint_prose.py - deterministic prose lints (DESIGN stage 4, pass 2)"." -> figlib/lint_prose.py
-- `c:w0013` "The tests area holds 9 files of this codebase." -> tests/ca.py, tests/test_m0_intake.py, tests/test_m1_compile.py, tests/test_m25_acquire.py
-- `c:w0014` "`tests/ca.py` says of itself: "Shared helper: locate and invoke the ca binary (the Rust core CLI)"." -> tests/ca.py
-- `c:w0015` "`tests/test_m0_intake.py` says of itself: "M0 gate: 3 source types parse with traces; 12 planted secrets -> 0 leaks"." -> tests/test_m0_intake.py
-- `c:w0016` "`tests/test_m1_compile.py` says of itself: "M1 gate (Rust core): on a real mid-size repo (llmwiki, ~104 py + 9 sql"." -> tests/test_m1_compile.py
-- `c:w0017` "`tests/test_m25_acquire.py` says of itself: "M2.5 gate: autonomous acquisition, license-gated"." -> tests/test_m25_acquire.py
-- `c:w0018` "`tests/test_m2_figures.py` says of itself: "M2 gate: the figure system, calibrated"." -> tests/test_m2_figures.py
+- `c:w0001` "This is a tour of cookbook-anything, compiled from its own source into a model of 68 files and 204 functions, every sentence below traceable to a span." -> figlib/figures_from_plan.py
+- `c:w0002` "Each chapter takes one area, shows the problem it solves, and walks a real path through the code, so by the end you can change it yourself." -> figlib/figures_from_plan.py
+- `c:w0003` "At the center of `runner` is `acquire.ts`: defines `Ctx`, `archivePage`, `arg`." -> runner/acquire/acquire.ts
+- `c:w0004` "Follow one real path through runner: start at `acquire.ts`, which reaches into `html2md.ts`." -> runner/acquire/acquire.ts, runner/acquire/html2md.ts
+- `c:w0005` "`acquire.ts`: defines `Ctx`, `archivePage`, `arg`" -> runner/acquire/acquire.ts
+- `c:w0006` "`html2md.ts`: defines `decodeEntities`, `htmlToMarkdown`" -> runner/acquire/html2md.ts
+- `c:w0007` "`infra.ts`: defines `Audit`, `Budget`, `HttpCache`" -> runner/acquire/infra.ts
+- `c:w0008` "`license.ts`: defines `CommonsMeta`, `GateVerdict`, `LicenseRecord`" -> runner/acquire/license.ts
+- `c:w0009` "`robots.ts`: defines `RobotsRules`, `isAllowed`, `parseRobots`" -> runner/acquire/robots.ts
+- `c:w0010` "At the center of `core` is `ca-model/lib.rs`: defines `Asset`, `Claim`, `ClaimStatus`." -> core/ca-model/src/lib.rs
+- `c:w0011` "Follow one real path through core: start at `main.rs`, which reaches into `ca-extract/lib.rs`, which reaches into `ca-model/lib.rs`." -> core/ca-cli/src/main.rs, core/ca-extract/src/lib.rs, core/ca-model/src/lib.rs
+- `c:w0012` "`ca-model/lib.rs`: defines `Asset`, `Claim`, `ClaimStatus`" -> core/ca-model/src/lib.rs
+- `c:w0013` "`main.rs`: defines `cmd_admit`, `cmd_compile`, `cmd_grade`" -> core/ca-cli/src/main.rs
+- `c:w0014` "`plan.rs`: defines `Chapter`, `FigurePlan`, `Plan`" -> core/ca-cli/src/plan.rs
+- `c:w0015` "`write.rs`: defines `WriteOut`, `coverage_json`, `mint`" -> core/ca-cli/src/write.rs
+- `c:w0016` "`ca-extract/lib.rs`: defines `ExtractOut`, `add_span`, `default`" -> core/ca-extract/src/lib.rs
+- `c:w0017` "At the center of `figlib` is `style.py`: the house style." -> figlib/style.py
+- `c:w0018` "Follow one real path through figlib: start at `figures_from_plan.py`, which reaches into `figcheck.py`." -> figlib/figures_from_plan.py, figlib/figcheck.py
+- `c:w0019` "`style.py`: the house style" -> figlib/style.py
+- `c:w0020` "`render.py`: render one FigurePayload through its recipe" -> figlib/render.py
+- `c:w0021` "`figures_from_plan.py`: build FigurePayloads from plan.json + model.json" -> figlib/figures_from_plan.py
+- `c:w0022` "`introspect.py`: facts about a rendered figure, taken from the live artist" -> figlib/introspect.py
+- `c:w0023` "`payload.py`: the figure data contract (DESIGN 5.4)" -> figlib/payload.py
+- `c:w0024` "At the center of `tests` is `ca.py`: locate and invoke the ca binary (the Rust core CLI)." -> tests/ca.py
+- `c:w0025` "Follow one real path through tests: start at `test_m0_intake.py`, which reaches into `ca.py`." -> tests/test_m0_intake.py, tests/ca.py
+- `c:w0026` "`ca.py`: locate and invoke the ca binary (the Rust core CLI)" -> tests/ca.py
+- `c:w0027` "`test_m0_intake.py`: 3 source types parse with traces; 12 planted secrets -> 0 leaks" -> tests/test_m0_intake.py
+- `c:w0028` "`test_m1_compile.py`: on a real mid-size repo (llmwiki, ~104 py + 9 sql" -> tests/test_m1_compile.py
+- `c:w0029` "`test_m25_acquire.py`: autonomous acquisition, license-gated" -> tests/test_m25_acquire.py
+- `c:w0030` "`test_m3_write.py`: plan + write with the leash on" -> tests/test_m3_write.py
 
 ## Unverified appendix
 
 - no agent-proposed edges in this model
-- cookbook steps marked [unverified] above await execution evidence
