@@ -82,7 +82,12 @@ pub fn extract(file_span: &Span, src_root: &str, out: &mut ExtractOut) {
         kind: NodeKind::File,
         name: rel.clone(),
         summary: String::new(),
-        attrs: serde_json::Map::from_iter([("language".into(), "markdown".into())]),
+        // loc lets doc chapters render a quantity figure like code chapters,
+        // instead of referencing a figure the figure stage never produced
+        attrs: serde_json::Map::from_iter([
+            ("language".into(), "markdown".into()),
+            ("loc".into(), serde_json::Value::from(lines.len())),
+        ]),
         spans: vec![file_span.id.clone()],
     });
 

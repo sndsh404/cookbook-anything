@@ -8,6 +8,7 @@ Usage: python figlib/figures_from_plan.py <cookbook_dir> <workspace_dir>
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -116,6 +117,15 @@ def main() -> int:
         print(f"  rendered {p.id} ({p.recipe})")
     paper = ws / "out" / "paper.md"
     report = check_dir(fig_dir, cb / "model.json", paper if paper.exists() else None)
+    # a figure the prose points at but the figure stage never produced is a
+    # broken reference (the inverse of F-06 orphan); flag it P1 so the gate
+    # catches a paper claiming figures that do not exist
+    if paper.exists():
+        ptext = paper.read_text(encoding="utf-8")
+        for ref in sorted(set(re.findall(r"!\[[^\]]*\]\(figures/([A-Za-z0-9_]+\.png)\)", ptext))):
+            if not (fig_dir / ref).exists():
+                report["findings"].append({"severity": "P1", "rule": "F-15",
+                    "text": f"prose references figures/{ref} but it was never rendered"})
     (ws / "out" / "figcheck_report.json").write_text(json.dumps(report, indent=1),
                                                      encoding="utf-8")
     p0 = sum(1 for f in report["findings"] if f["severity"] == "P0")
