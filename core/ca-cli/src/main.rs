@@ -278,6 +278,10 @@ fn cmd_compile(cookbook: &str) -> ExitCode {
                 imap.extend(ca_extract::python::extract(fs, root, &mut out));
             } else if loc.ends_with(".md") || loc.ends_with(".rst") || loc.ends_with(".txt") || src.kind == "pdf" {
                 ca_extract::markdown::extract(fs, root, &mut out);
+            } else if loc.ends_with(".rs") {
+                ca_extract::nativecode::extract_rust(fs, root, &mut out);
+            } else if loc.ends_with(".ts") || loc.ends_with(".tsx") || loc.ends_with(".mjs") {
+                ca_extract::nativecode::extract_ts(fs, root, &mut out);
             } else if loc.ends_with(".csv") {
                 ca_extract::data::extract_csv(fs, root, &mut out);
             } else if loc.ends_with(".sql") {
@@ -287,16 +291,30 @@ fn cmd_compile(cookbook: &str) -> ExitCode {
         import_maps.insert(root.clone(), imap);
     }
 
-    // relink import edges to in-repo files where the dotted path resolves
+    // relink import edges to in-repo files where the dotted path resolves.
+    // bare-module imports (e.g. `from render import x` when render.py is on
+    // sys.path) only relink when the basename is UNAMBIGUOUS across the repo;
+    // an ambiguous basename is left as an external module node rather than
+    // risk a false file->file arrow (the firewall prefers a missing edge to
+    // a wrong one).
     let mut relinked = 0usize;
     for src in &sources {
         if let Some(imap) = import_maps.get(&src.path) {
+            let mut basename: BTreeMap<&str, Option<&ca_model::NodeId>> = BTreeMap::new();
+            for (dotted, fid) in imap {
+                let base = dotted.rsplit('.').next().unwrap_or(dotted);
+                basename
+                    .entry(base)
+                    .and_modify(|v| *v = None) // collision: poison it
+                    .or_insert(Some(fid));
+            }
             for e in out.edges.iter_mut() {
                 if e.kind() == ca_model::EdgeKind::Imports {
                     if let Some(dotted) = e.target().0.strip_prefix("node:mod/") {
                         let hit = imap
                             .get(dotted)
                             .or_else(|| imap.get(&format!("{dotted}.__init__")))
+                            .or_else(|| basename.get(dotted).copied().flatten())
                             .cloned();
                         if let Some(t) = hit {
                             if &t != e.source() {

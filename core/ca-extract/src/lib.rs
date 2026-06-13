@@ -5,6 +5,7 @@
 pub mod data;
 pub mod intake;
 pub mod markdown;
+pub mod nativecode;
 pub mod pdf;
 pub mod python;
 pub mod secrets;
