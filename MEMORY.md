@@ -27,3 +27,5 @@ from the CA_REF_DIR env var or .claude/state/ref_dir.txt.
 [LEARN:swarm] 2026-06-12 The OpenAI swarm pattern (agent + handoff + shared context, nothing else) drops cleanly onto deterministic workers: parallel fan-out is just Promise.all over handoffs with array-merging context. The part that keeps it honest is not the swarm at all, it is the single admission gate: workers propose, ca admit re-verifies every span reference, so a sloppy worker can only waste its own time.
 
 [LEARN:harness] 2026-06-12 Zero-tolerance regression checks on wall-clock metrics produce false reds (15.6 to 15.8 pct). Give timing metrics a small tolerance band in the harness and keep the hard threshold in the gate test itself.
+
+[LEARN:privacy] 2026-06-12 Absolute paths in committed files leak a username and break on other machines; they crept in via test fixtures hardcoding a reference-repo path. Fix: tests read machine paths from an env var or a gitignored .claude/state file, and assess.py scans tracked files for home-dir patterns (C:\Users\, /home/, /Users/) as a P1 so it cannot silently recur. Git history still holds the old leak; not rewriting it, just stopping the bleed.
