@@ -155,6 +155,14 @@ fn basename(name: &str) -> String {
     name.replace('\\', "/").rsplit('/').next().unwrap_or(name).to_string()
 }
 
+/// Render a verbatim claim for the BODY under the voice profile: em dashes
+/// out (no em dashes anywhere we author prose). The claim's text in the model
+/// and the claims appendix stays exactly as the source had it; this only
+/// affects display, and the claim id still resolves to the same span.
+fn display(text: &str) -> String {
+    text.replace('\u{2014}', " - ")
+}
+
 /// When a basename collides (five lib.rs), qualify with the nearest
 /// meaningful ancestor directory, skipping generic ones like `src`, so
 /// core/ca-model/src/lib.rs becomes `ca-model/lib.rs`, not `src/lib.rs`.
@@ -351,7 +359,7 @@ pub fn write_paper(
     let mut intro_used = 0;
     for cid in &intro_claims {
         if let Some(c) = snap.doc_claims.iter().find(|c| &c.id == cid) {
-            write!(p, "{} {{{{{}}}}} ", c.text, c.id).ok();
+            write!(p, "{} {{{{{}}}}} ", display(&c.text), c.id).ok();
             used_claims.insert(cid.clone());
             nf += 1; nm += 1;
             intro_used += 1;
@@ -441,7 +449,7 @@ fn write_chapter(
     if !claims.is_empty() {
         writeln!(p, "See why this area exists, in the project's own words:\n").ok();
         for c in claims.iter().take(3) {
-            write!(p, "{} {{{{{}}}}} ", c.text, c.id).ok();
+            write!(p, "{} {{{{{}}}}} ", display(&c.text), c.id).ok();
             used.insert(c.id.clone());
             *nf += 1;
             *nm += 1;
