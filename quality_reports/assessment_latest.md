@@ -1,4 +1,4 @@
-# Assessment - 2026-06-13T15:16:50.770552+00:00
+# Assessment - 2026-06-13T21:48:38.723927+00:00
 
 **Score: 100/100** (green)
 
@@ -28,9 +28,9 @@
 - `m3_prose_defects_caught` = 10.0 (want up, from test_m3_write.py)
 - `m4_chapters_figured` = 6.0 (want up, from test_m4_ship.py)
 - `m4_figure_p0` = 0.0 (want down, from test_m4_ship.py)
-- `m4_grade` = 97.0 (want up, from test_m4_ship.py)
+- `m4_grade` = 87.0 (want up, from test_m4_ship.py)
 - `m5_history_chain_len` = 3.0 (want up, from test_m5_incremental.py)
-- `m5_rerun_work_pct` = 8.5 (want down, from test_m5_incremental.py)
+- `m5_rerun_work_pct` = 16.9 (want down, from test_m5_incremental.py)
 - `m5_supersession_linked` = 1.0 (want up, from test_m5_incremental.py)
 - `m6_chapters_covered` = 6.0 (want up, from test_m6_swarm.py)
 - `m6_claims_admitted` = 9.0 (want up, from test_m6_swarm.py)
@@ -38,6 +38,9 @@
 - `m6_rejected_unsourced` = 2.0 (want up, from test_m6_swarm.py)
 - `m6_support_confidence_raised` = 1.0 (want up, from test_m6_swarm.py)
 - `m6_unsourced_admitted` = 0.0 (want down, from test_m6_swarm.py)
+- `m7_catches_filename_list` = 1.0 (want up, from test_m7_teaching.py)
+- `m7_selfpaper_chapters_teaching` = 4.0 (want up, from test_m7_teaching.py)
+- `m7_selfpaper_p0` = 0.0 (want down, from test_m7_teaching.py)
 - `secrets_leaked` = 0.0 (want down, from test_m0_intake.py)
 
 ## Findings
