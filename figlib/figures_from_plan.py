@@ -25,12 +25,44 @@ def _short(name: str) -> str:
     return name.split("/")[-1]
 
 
+_GENERIC_DIRS = {"src", "lib", "source"}
+
+
+def _labeler(model: dict):
+    """Disambiguated short labels: basename if unique among file nodes, else
+    qualified by the nearest non-generic ancestor dir, so five lib.rs become
+    ca-model/lib.rs, ca-extract/lib.rs, ... not all 'src/lib.rs'."""
+    files = [n["name"] for n in model["nodes"] if n["type"] == "file"]
+    counts = Counter(_short(n) for n in files)
+
+    def label(name: str) -> str:
+        base = _short(name)
+        if counts.get(base, 0) <= 1:
+            return base
+        parts = name.replace("\\", "/").split("/")
+        for anc in reversed(parts[:-1]):
+            if anc not in _GENERIC_DIRS:
+                return f"{anc}/{base}"
+        return "/".join(parts[-2:]) if len(parts) >= 2 else base
+
+    return label
+
+
 def build_payloads(model: dict, plan: dict) -> list[FigurePayload]:
     nodes = {n["id"]: n for n in model["nodes"]}
     file_ids = {n["id"] for n in model["nodes"] if n["type"] == "file"}
     imp = [e for e in model["edges"] if e["type"] == "imports"
            and e["source"] in file_ids and e["target"] in file_ids]
+    # (source, target) -> a real edge type, calls preferred over imports, so a
+    # dataflow figure of the worked path uses an edge that resolves in the model
+    edge_type: dict[tuple[str, str], str] = {}
+    for e in model["edges"]:
+        if e["source"] in file_ids and e["target"] in file_ids:
+            k = (e["source"], e["target"])
+            if e["type"] == "calls" or k not in edge_type:
+                edge_type[k] = e["type"]
     payloads: list[FigurePayload] = []
+    lbl = _labeler(model)
 
     # ---- page one: the clusters and their members
     chapters = plan["chapters"]
@@ -39,7 +71,7 @@ def build_payloads(model: dict, plan: dict) -> list[FigurePayload]:
         for nid in ch["node_ids"][:3]:
             if nid not in nodes:
                 continue
-            label = _short(nodes[nid]["name"])
+            label = lbl(nodes[nid]["name"])
             if label in labels:
                 label = "/".join(nodes[nid]["name"].split("/")[-2:])
             labels.add(label)
@@ -61,12 +93,32 @@ def build_payloads(model: dict, plan: dict) -> list[FigurePayload]:
         members = [nid for nid in ch["node_ids"] if nid in nodes]
         intra = [e for e in imp if e["source"] in members and e["target"] in members]
         recipe = ch["figure"]["recipe"]
-        if recipe == "dependency_graph" and len(intra) >= 2:
+        worked = [nid for nid in ch.get("worked_path", []) if nid in nodes]
+
+        if recipe == "dataflow" and len(worked) >= 2:
+            # the teaching figure: one real path through the area, each box
+            # handing off to the next via a real call/import edge
+            pn = [PayloadNode(id=nid, label=lbl(nodes[nid]["name"]),
+                              role="accent" if k == 0 else "")
+                  for k, nid in enumerate(worked)]
+            pe = []
+            for a, b in zip(worked, worked[1:]):
+                t = edge_type.get((a, b))
+                if t:
+                    pe.append(PayloadEdge(source=a, target=b, type=t,
+                                          label="calls" if t == "calls" else "uses"))
+            payloads.append(FigurePayload(
+                id=fid, recipe="dataflow",
+                read=f"Reading this as: a dataflow figure following one path through "
+                     f"the {ch['title']} area, {len(worked)} steps left to right, print mode, density 2.",
+                caption=f"The path a task takes through {ch['title']}: each box hands off to the next.",
+                nodes=pn, edges=pe, referenced_in=f"ch{ch['index'] + 1}"))
+        elif recipe == "dependency_graph" and len(intra) >= 2:
             pop = Counter(e["target"] for e in intra)
             hub = pop.most_common(1)[0][0]
             users = [e["source"] for e in intra if e["target"] == hub][:9]
             ids = [hub] + [u for u in users if u != hub]
-            pn = [PayloadNode(id=i, label=_short(nodes[i]["name"]),
+            pn = [PayloadNode(id=i, label=lbl(nodes[i]["name"]),
                               role="accent" if i == hub else "") for i in ids]
             pe = [PayloadEdge(source=u, target=hub, type="imports")
                   for u in ids if u != hub
@@ -88,7 +140,7 @@ def build_payloads(model: dict, plan: dict) -> list[FigurePayload]:
                 read=f"Reading this as: a quantity figure sizing the {ch['title']} "
                      "area's files, print mode, density 2.",
                 caption=f"A few files carry most of the code in {ch['title']}.",
-                quantities=[PayloadQuantity(label=_short(n["name"]),
+                quantities=[PayloadQuantity(label=lbl(n["name"]),
                                             value=float(n["attrs"]["loc"]),
                                             unit="lines of code", span=n["spans"][0])
                             for n in ranked],
