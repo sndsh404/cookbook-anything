@@ -198,6 +198,16 @@ def main() -> int:
             print(f"  {f['severity']} [{f['rule']}] {f['text']}")
         if lp1:
             return 1
+
+    # the teaching gate rides here too (one python startup, not three); it is
+    # report-only, grade is the single decision point
+    from teaching_check import check as teaching_check
+    trep = teaching_check(cb, ws)
+    (ws / "out" / "teaching_report.json").write_text(json.dumps(trep, indent=1), encoding="utf-8")
+    tp0 = sum(1 for f in trep["findings"] if f["severity"] == "P0")
+    print(f"[Stage 5/7] teaching: {trep['passing']}/{trep['chapters']} chapters teach ({tp0} P0)")
+    for f in trep["findings"]:
+        print(f"  {f['severity']} [{f['rule']}] {f['text']}")
     return 1 if p0 or p1 else 0
 
 
