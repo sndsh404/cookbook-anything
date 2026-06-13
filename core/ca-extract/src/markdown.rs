@@ -62,6 +62,11 @@ fn claim_worthy(s: &str) -> bool {
         && !s.contains('?')
         // a sentence mutilated by the secret filter is evidence, not prose
         && !s.contains("[REDACTED")
+        // a sentence containing our own claim-marker delimiters (e.g. docs
+        // describing the {{c:NNNN}} syntax) would inject a fake marker if
+        // quoted; it is meta-prose about the tool, not a clean claim
+        && !s.contains("{{")
+        && !s.contains("}}")
 }
 
 pub fn extract(file_span: &Span, src_root: &str, out: &mut ExtractOut) {
