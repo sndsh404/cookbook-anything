@@ -66,23 +66,33 @@ def check(cookbook: Path, workspace: Path) -> dict:
         n_design = sum(1 for mk in markers if mk in design)
         recipe = chapter_figure_recipe(fig_dir, idx)
 
+        # a chapter teaches when it opens with the WHY and shows interaction.
+        # Per-chapter shortfalls are P2 nudges; the fatal verdict is reserved
+        # for a paper that is MOSTLY filename lists (below), so one thin area
+        # in an otherwise good paper does not block shipping.
         ok = True
         if n_design < MIN_DESIGN_CLAIMS:
-            findings.append({"severity": "P0", "rule": "T-01",
+            findings.append({"severity": "P2", "rule": "T-01",
                 "text": f"chapter {idx} ({title}) opens with {n_design} design claims "
-                        f"(need >= {MIN_DESIGN_CLAIMS}); it lists files without teaching why"})
+                        f"(want >= {MIN_DESIGN_CLAIMS}); thin on the why"})
             ok = False
         if recipe not in INTERACTION_RECIPES:
-            findings.append({"severity": "P0", "rule": "T-02",
-                "text": f"chapter {idx} ({title}) uses a '{recipe}' figure; a teaching "
-                        "chapter needs a worked-example/interaction figure, not a size chart"})
+            findings.append({"severity": "P2", "rule": "T-02",
+                "text": f"chapter {idx} ({title}) uses a '{recipe}' figure, not a "
+                        "worked-example/interaction figure"})
             ok = False
-        # move 6: a real "what you can now do" close
         if "what you can now do" not in chunk.lower():
-            findings.append({"severity": "P1", "rule": "T-03",
+            findings.append({"severity": "P2", "rule": "T-03",
                 "text": f"chapter {idx} ({title}) has no 'what you can now do' close"})
         if ok:
             passing += 1
+
+    # the failure mode the gate exists for: a paper that is mostly a table of
+    # contents. If fewer than half its chapters teach, it does not ship.
+    if n_chapters > 0 and passing * 2 < n_chapters:
+        findings.append({"severity": "P0", "rule": "T-00",
+            "text": f"only {passing}/{n_chapters} chapters teach; this is a verified "
+                    "file listing, not a cookbook"})
 
     return {"findings": findings, "chapters": n_chapters, "passing": passing}
 

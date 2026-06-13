@@ -68,8 +68,8 @@ def build_synthetic() -> None:
     (cb).mkdir(parents=True, exist_ok=True)
     (cb / "model.json").write_text(json.dumps(model), encoding="utf-8")
 
-    # chapter 1: teaches (2 design claims, dataflow figure, a close)
-    # chapter 2: old style (filename list, only an operational claim, size chart)
+    # one teaching chapter and two old-style filename-list chapters, so the
+    # paper is mostly a listing (1/3 teach) and earns the fatal T-00 verdict
     draft = (
         "# x\n\n"
         "## Chapter 1: good\n\n"
@@ -83,9 +83,14 @@ def build_synthetic() -> None:
         "- `a.py` (no docstring)\n- `b.py` (no docstring)\n- `c.py` (no docstring)\n\n"
         "![fig](figures/fig_ch2.png)\n\n"
         "*Figure: a few files carry most of the code.*\n\n"
+        "## Chapter 3: alsobad\n\n"
+        "The alsobad area holds 4 files of this codebase. {{c:w0002}}\n\n"
+        "- `d.py` (no docstring)\n- `e.py` (no docstring)\n\n"
+        "![fig](figures/fig_ch3.png)\n\n"
+        "*Figure: a few files carry most of the code.*\n\n"
     )
     (WS / "out" / "paper.draft.md").write_text(draft, encoding="utf-8")
-    for idx, recipe in [(1, "dataflow"), (2, "quantity")]:
+    for idx, recipe in [(1, "dataflow"), (2, "quantity"), (3, "quantity")]:
         (out / f"fig_ch{idx}.sidecar.json").write_text(
             json.dumps({"payload": {"id": f"fig_ch{idx}", "recipe": recipe}}), encoding="utf-8")
 
@@ -93,20 +98,24 @@ def build_synthetic() -> None:
 def main() -> int:
     failures: list[str] = []
 
-    # ---- direction 1: the synthetic old-style chapter must FAIL
+    # ---- direction 1: a mostly-filename-list paper must FAIL (P0 T-00),
+    # and the bad chapter must be flagged for both shortfalls
     build_synthetic()
     rep = check(WS / ".cookbook", WS)
     bad_t01 = any(f["rule"] == "T-01" and "chapter 2" in f["text"] for f in rep["findings"])
     bad_t02 = any(f["rule"] == "T-02" and "chapter 2" in f["text"] for f in rep["findings"])
-    good_passes = not any("chapter 1" in f["text"] and f["severity"] == "P0" for f in rep["findings"])
-    caught = 1 if (bad_t01 and bad_t02 and good_passes) else 0
+    paper_p0 = any(f["rule"] == "T-00" and f["severity"] == "P0" for f in rep["findings"])
+    good_clean = not any("chapter 1" in f["text"] for f in rep["findings"])
+    caught = 1 if (bad_t01 and bad_t02 and paper_p0 and good_clean) else 0
     print(f"METRIC m7_catches_filename_list {caught} up")
     if not bad_t01:
         failures.append("filename-list chapter not flagged for too few design claims (T-01)")
     if not bad_t02:
         failures.append("size-chart chapter not flagged (T-02)")
-    if not good_passes:
-        failures.append("the teaching chapter was wrongly failed")
+    if not paper_p0:
+        failures.append("mostly-filename-list paper did not earn the fatal T-00 verdict")
+    if not good_clean:
+        failures.append("the teaching chapter was wrongly flagged")
 
     # ---- direction 2: the real self-paper must PASS
     ensure_selfdog()
