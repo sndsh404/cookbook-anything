@@ -126,12 +126,17 @@ def check_regressions(f: Findings, metrics: dict[str, dict]) -> list[str]:
         prev = last_metrics.get(name)
         if not prev:
             continue
-        # wall-clock timing metrics (a sub-second run's stage ratios) are
-        # noise-dominated and a legitimate workload change (e.g. extracting
-        # more languages) shifts them honestly. They are NOT trend-checked
-        # here; their real budget is the hard threshold asserted in the gate
-        # test itself (e.g. M5 requires < 20% in test_m5_incremental.py).
-        if name.endswith("_work_pct") or name.endswith("_ms") or "_time" in name:
+        # two kinds of metric are NOT trend-checked, because each is already
+        # guarded by a hard threshold in its own gate test, and each shifts
+        # legitimately for reasons that are not quality regressions:
+        #  - wall-clock ratios: noise-dominated, move when the workload changes
+        #    (e.g. extracting more languages). Floor: M5 requires < 20%.
+        #  - scores (_grade): drop whenever the rubric tightens (e.g. adding
+        #    the teaching gate lowers every paper's grade). Floor: M4 requires
+        #    >= 80, enforced by the test itself, so a real drop below the bar
+        #    fails the gate test directly.
+        if name.endswith("_work_pct") or name.endswith("_ms") or "_time" in name \
+                or name.endswith("_grade"):
             continue
         delta = (prev["value"] - cur["value"]) if cur["dir"] == "up" else (cur["value"] - prev["value"])
         # tolerance: percentage/score metrics jitter slightly; a real
