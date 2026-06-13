@@ -48,6 +48,7 @@ const pipeline: Array<[string, string, string[]]> = [
   ["verify", CA, ["verify", cookbook, workspace]],
   // figures_from_plan also runs the prose lints (one python process)
   ["figures", PY, [join(root, "figlib", "figures_from_plan.py"), cookbook, workspace]],
+  ["teaching", PY, [join(root, "figlib", "teaching_check.py"), cookbook, workspace]],
 ];
 
 for (const [name, cmd, args] of pipeline) {

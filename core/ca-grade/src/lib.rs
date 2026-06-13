@@ -134,6 +134,7 @@ pub fn grade(workspace: &Path) -> Grade {
         ("figcheck_report.json", 100, 10),
         ("lint_report.json", 40, 10),
         ("acquire_audit_violations.json", 100, 10),
+        ("teaching_report.json", 100, 10),
     ] {
         let p = workspace.join("out").join(name);
         if let Ok(t) = std::fs::read_to_string(&p) {
