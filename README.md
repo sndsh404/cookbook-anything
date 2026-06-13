@@ -58,8 +58,75 @@ edge listed plainly, every external asset with its license and attribution.
 - `scripts/assess.py` is the repo's own objective harness: build, tests,
   hard-rule compliance, regression check against the last run.
 
+## How it works (demonstrated on itself)
+
+Everything in this section was produced by running cookbook-anything on its own
+repository. None of it is hand-written prose or hand-drawn figures. To
+reproduce it, point the stage runner at a checkout of this repo:
+
+```
+node --experimental-strip-types runner/stages.ts <dir-containing-a-checkout> <workspace> cookbook-anything
+```
+
+The run compiled 68 source files into a model and shipped a paper at **grade
+96/100**, passing the same gates every other run must pass: 100% of edges carry
+an extractor, 100% of claims resolve to a source span, and every figure passes
+figcheck with its provenance resolving to the model.
+
+The generated TL;DR, verbatim:
+
+> This codebase compiles to a model of 68 files and 204 functions, every one
+> traced to source. The tour below walks 6 areas in dependency order, so
+> nothing is used before it is taught.
+
+The generated page-one figure (recipe `architecture_box`), showing the real
+layer split the extractors found, the Rust core beside the Python figlib and
+the root docs:
+
+![generated architecture figure](docs/figures/fig_page_one.png)
+
+A generated dependency figure (recipe `dependency_graph`), built from real
+import edges: every figlib recipe module depends on the `style.py` house-style
+hub:
+
+![generated figlib dependency figure](docs/figures/fig_ch5.png)
+
+A generated walkthrough excerpt, the opening of the `core` chapter, verbatim
+(the file bullets continue in the full paper, each with a span reference):
+
+> ## Chapter 2: core
+>
+> The core area holds 16 files of this codebase.
+>
+> - `core/ca-cli/src/admit.rs` (no docstring; see the source span in the claims appendix)
+> - `core/ca-cli/src/main.rs` (no docstring; see the source span in the claims appendix)
+
+The full generated paper is committed at
+[`docs/self-paper.md`](docs/self-paper.md). Its claims appendix is the proof:
+every sentence carries a claim id that resolves to a file and line range, so a
+reader can check any sentence against its span (for example
+`c:0001` resolves to `CLAUDE.md#L5-L9`).
+
+### What this demonstration does and does not show (honestly)
+
+- Extraction covers Python, Rust, and TypeScript source plus Markdown document
+  structure. Config files (toml, json, lockfiles) are ingested as spans but not
+  parsed into the graph, so they do not appear as nodes.
+- The figures are real recipes rendered off the compiled model and
+  provenance-checked, not hand-drawn. The page-one figure is a summary showing
+  three of the repo's six clusters; the rest get their own chapter figures in
+  the paper.
+- The intake to ship pipeline is orchestrated by `runner/stages.ts` and
+  described in `DESIGN.md`; it is not itself extracted as a dataflow graph, so
+  the figures show the repo's real code structure rather than a diagram of the
+  stages.
+- The LLM judgment layers (the figure vision-critic and the prose
+  humanize-auditor) are not built yet. The gates exercised here are the
+  deterministic ones: figcheck, the prose lints, claim verification, and the
+  scored grade.
+
 ## Status
 
-Early build. See `DESIGN.md` for the full spec and milestone gates (M0..M5),
+Early build. See `DESIGN.md` for the full spec and milestone gates (M0..M6),
 `CLAUDE.md` for the operating guide, and `quality_reports/` for the audit
 trail of every session.
