@@ -14,6 +14,7 @@ struct Res {
     def: Regex,
     import_plain: Regex,
     import_from: Regex,
+    from_names: Regex,
 }
 
 fn res() -> &'static Res {
@@ -22,6 +23,8 @@ fn res() -> &'static Res {
         def: Regex::new(r"^(\s*)(?:async\s+)?(def|class)\s+(\w+)").unwrap(),
         import_plain: Regex::new(r"^\s*import\s+([\w.]+(?:\s*,\s*[\w.]+)*)").unwrap(),
         import_from: Regex::new(r"^\s*from\s+([\w.]+)\s+import\s").unwrap(),
+        // `from MODULE import a, b as c, d` -> module + the imported names
+        from_names: Regex::new(r"^\s*from\s+([\w.]+)\s+import\s+(.+)").unwrap(),
     })
 }
 
@@ -243,6 +246,56 @@ pub fn extract(file_span: &Span, src_root: &str, out: &mut ExtractOut) -> BTreeM
             ex.clone(),
             vec![file_span.id.clone()],
         ));
+    }
+
+    // cross-module calls: `from M import name` binds name->M; if name(...) is
+    // actually invoked in this file, that is a real call INTO module M, a
+    // richer interaction than the bare import (an import may be unused). The
+    // edge targets the module node and is relinked to the file in main.rs,
+    // giving file->file `calls` edges the teaching figures can follow.
+    let mut binding: BTreeMap<String, String> = BTreeMap::new(); // name -> module
+    for line in &lines {
+        if let Some(c) = res().from_names.captures(line) {
+            let module = c[1].to_string();
+            for part in c[2].split(',') {
+                let name = part.trim().trim_start_matches('(').split_whitespace().next().unwrap_or("");
+                let bound = part.split(" as ").last().unwrap_or(name).trim().trim_end_matches(')');
+                if !name.is_empty() && name != "*" {
+                    binding.insert(bound.to_string(), module.clone());
+                }
+            }
+        }
+    }
+    if !binding.is_empty() {
+        let body = lines.join("\n");
+        let mut called_mods: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+        for (name, module) in &binding {
+            let pat = Regex::new(&format!(r"\b{}\s*\(", regex::escape(name))).unwrap();
+            // skip the import line itself; require an actual call site
+            if pat.is_match(&body) {
+                called_mods.insert(module.clone());
+            }
+        }
+        for module in called_mods {
+            let mid = NodeId(format!("node:mod/{module}"));
+            if !out.nodes.iter().any(|n| n.id == mid) {
+                out.nodes.push(Node {
+                    id: mid.clone(),
+                    kind: NodeKind::Module,
+                    name: module.clone(),
+                    summary: String::new(),
+                    attrs: Default::default(),
+                    spans: vec![file_span.id.clone()],
+                });
+            }
+            out.edges.push(Edge::extracted(
+                file_id.clone(),
+                mid,
+                EdgeKind::Calls,
+                ex.clone(),
+                vec![file_span.id.clone()],
+            ));
+        }
     }
 
     let dotted = rel.trim_end_matches(".py").replace('/', ".");

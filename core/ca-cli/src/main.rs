@@ -309,7 +309,9 @@ fn cmd_compile(cookbook: &str) -> ExitCode {
                     .or_insert(Some(fid));
             }
             for e in out.edges.iter_mut() {
-                if e.kind() == ca_model::EdgeKind::Imports {
+                // both imports (A depends on B) and calls (A invokes into B)
+                // relink module targets to in-repo files
+                if e.kind() == ca_model::EdgeKind::Imports || e.kind() == ca_model::EdgeKind::Calls {
                     if let Some(dotted) = e.target().0.strip_prefix("node:mod/") {
                         let hit = imap
                             .get(dotted)
