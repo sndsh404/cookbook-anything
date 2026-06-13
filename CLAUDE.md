@@ -74,3 +74,6 @@ extractor or an honest "unverified" marker, never a more confident prompt.
   decision). Windows paths; use pathlib everywhere.
 - Branches m<N>/<slug>; merge to main only on green assess.
 - Commits authored as Sandesh Bhandari, lowercase, plain, no trailers.
+- MEMORY.md and committed docs hold portable lessons only; machine paths,
+  usernames, and local state go in .claude/state (gitignored). assess.py
+  flags committed home-dir paths P1 so this cannot silently recur.

@@ -174,6 +174,36 @@ def check_hard_rules(f: Findings) -> None:
             f.p1(f"em dashes in shipped prose: {em}", deduction=3 * em)
 
 
+# an absolute home-dir path with a user segment: C:\Users\name, /home/name,
+# /Users/name. Committed files must not carry these (they leak a username and
+# break on any other machine). Machine specifics belong in .claude/state.
+HOME_PATH = re.compile(r"(?:[A-Za-z]:\\Users\\|/home/|/Users/)[A-Za-z0-9._-]+")
+
+
+def check_committed_privacy(f: Findings) -> None:
+    """Scan git-tracked files for leaked home-dir paths (P1)."""
+    try:
+        out = subprocess.run(["git", "ls-files"], cwd=str(ROOT),
+                             capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return
+    if out.returncode != 0:
+        return
+    self_rel = Path(__file__).resolve().relative_to(ROOT).as_posix()
+    for rel in out.stdout.splitlines():
+        if rel == self_rel:  # this scanner holds the pattern, not a real path
+            continue
+        try:
+            text = (ROOT / rel).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        m = HOME_PATH.search(text)
+        if m:
+            line = text[: m.start()].count("\n") + 1
+            f.p1(f"home-dir path leaked in committed file {rel}:{line} "
+                 f"('{m.group(0)}'); move machine specifics to .claude/state")
+
+
 def reconcile_checklist(f: Findings, metrics: dict[str, dict]) -> None:
     claude = ROOT / "CLAUDE.md"
     if not claude.exists():
@@ -202,6 +232,7 @@ def main() -> int:
         tests_ok = False
     regressions = check_regressions(f, metrics)
     check_hard_rules(f)
+    check_committed_privacy(f)
     reconcile_checklist(f, metrics)
 
     score = 0 if not (built and tests_ok) else f.score()
