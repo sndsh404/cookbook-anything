@@ -14,7 +14,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REF = Path(r"C:\Users\bhansa01\Downloads\cookbook-20260611T231425Z-3-002\cookbook\llmwiki-master")
+sys.path.insert(0, str(ROOT / "tests"))
+import ca  # noqa: E402
+
+REF = ca.ref_dir() / "llmwiki-master"
 WS = ROOT / "workspace" / "_m4test"
 
 

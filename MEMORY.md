@@ -7,10 +7,10 @@ milestone or surprise.
 an objective harness + checkpoints. The score must come from assess.py before
 any push; opinion-based "looks done" is how slop ships.
 
-[LEARN:env] 2026-06-11 This machine: Windows 11, Python 3.14.3, matplotlib
-3.10.8, git 2.44, PowerShell 5.1 (no && chaining). Push auth to
-github.com/sndsh404 works. Reference repos extracted at
-C:\Users\bhansa01\Downloads\cookbook-20260611T231425Z-3-002\cookbook\.
+[LEARN:env] 2026-06-11 Toolchain: Windows 11, Python 3.14.3, matplotlib
+3.10.8, git 2.44, PowerShell 5.1 (no && chaining). Reference repos extracted
+locally (exact path in .claude/state/env.local.md, gitignored); tests read it
+from the CA_REF_DIR env var or .claude/state/ref_dir.txt.
 
 [LEARN:secrets] 2026-06-11 GitHub push protection scans pushed blobs and blocks secret-shaped literals even in test fixtures. Planted secrets must be assembled at runtime (string joins) so they exist only in the gitignored workspace. Our own intake filter and GitHub's scanner agree on what looks like a secret, which is a free calibration signal.
 
@@ -18,7 +18,7 @@ C:\Users\bhansa01\Downloads\cookbook-20260611T231425Z-3-002\cookbook\.
 
 [LEARN:architecture] 2026-06-12 The polyglot split (rust core / ts runner / python figlib) made one whole class of merge code disappear: the agent-confidence clamp is gone because ca-model makes an agent edge at confidence 1.0 unrepresentable. Encoding invariants in types beats enforcing them in pipelines.
 
-[LEARN:git] 2026-06-12 Sandesh wants commit messages short and sweet, e.g. 'm4: ship paper at grade 99'. Keep them one line, lowercase, no trailers.
+[LEARN:git] 2026-06-12 Commit style: one line, lowercase, short, no trailers (e.g. 'm4: ship paper at grade 99').
 
 [LEARN:incremental] 2026-06-12 The 20 pct incremental gate was met by attacking fixed overheads, not the obvious stages: lazy matplotlib import (a cached figure run never pays it), stat-based hash skipping (git's move), one alternation regex instead of O(n^2) regex builds, and merging two python spawns into one. Wall-time gates are won in startup costs.
 
