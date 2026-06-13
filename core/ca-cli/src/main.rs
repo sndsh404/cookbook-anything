@@ -126,6 +126,11 @@ fn cmd_write(cookbook: &str, workspace: &str, repo_name: &str, flags: &[String])
     let plan_json = std::fs::read_to_string(cb.join("plan.json")).unwrap_or_default();
     let p: serde_json::Value = serde_json::from_str(&plan_json).unwrap_or_default();
     // rebuild the Plan from json (only the fields the writer needs)
+    fn str_vec(v: &serde_json::Value) -> Vec<String> {
+        v.as_array()
+            .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+            .unwrap_or_default()
+    }
     let chapters = p["chapters"]
         .as_array()
         .map(|a| {
@@ -143,6 +148,8 @@ fn cmd_write(cookbook: &str, workspace: &str, repo_name: &str, flags: &[String])
                         why: c["figure"]["why"].as_str().unwrap_or("").to_string(),
                     },
                     prereqs: vec![],
+                    worked_path: str_vec(&c["worked_path"]),
+                    key_files: str_vec(&c["key_files"]),
                 })
                 .collect::<Vec<_>>()
         })
@@ -279,9 +286,9 @@ fn cmd_compile(cookbook: &str) -> ExitCode {
             } else if loc.ends_with(".md") || loc.ends_with(".rst") || loc.ends_with(".txt") || src.kind == "pdf" {
                 ca_extract::markdown::extract(fs, root, &mut out);
             } else if loc.ends_with(".rs") {
-                ca_extract::nativecode::extract_rust(fs, root, &mut out);
+                imap.extend(ca_extract::nativecode::extract_rust(fs, root, &mut out));
             } else if loc.ends_with(".ts") || loc.ends_with(".tsx") || loc.ends_with(".mjs") {
-                ca_extract::nativecode::extract_ts(fs, root, &mut out);
+                imap.extend(ca_extract::nativecode::extract_ts(fs, root, &mut out));
             } else if loc.ends_with(".csv") {
                 ca_extract::data::extract_csv(fs, root, &mut out);
             } else if loc.ends_with(".sql") {

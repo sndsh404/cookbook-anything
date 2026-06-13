@@ -7,6 +7,7 @@
 use crate::ExtractOut;
 use ca_model::{Edge, EdgeKind, ExtractorId, Node, NodeId, NodeKind, Span};
 use regex::Regex;
+use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
 pub const RUST: &str = "ca-extract@rust";
@@ -45,6 +46,7 @@ fn kind_for(keyword: &str) -> NodeKind {
 
 /// Shared body: `def_re` captures (keyword, name); `import_re` captures the
 /// imported module path in group 1.
+#[allow(clippy::too_many_arguments)]
 fn extract_lang(
     file_span: &Span,
     src_root: &str,
@@ -54,7 +56,8 @@ fn extract_lang(
     def_re: &Regex,
     import_re: &Regex,
     doc_prefix: &str,
-) {
+    module_of: &dyn Fn(&str) -> Option<String>,
+) -> BTreeMap<String, NodeId> {
     let rel = file_span.locator.replace('\\', "/");
     let lines: Vec<&str> = file_span.text.lines().collect();
     let ex = ExtractorId::new(extractor).unwrap();
@@ -119,22 +122,19 @@ fn extract_lang(
         pending_doc.clear();
     }
 
-    // imports become module nodes (external-ish; no cross-file relink, the
-    // honest narrow scope). First path segment is the module identity.
+    // imports become module nodes; `module_of` reduces a raw import to the
+    // identifier that the relink step (main.rs) matches against in-repo
+    // files, so cross-file edges resolve instead of dangling as externals.
     imports.sort();
     imports.dedup();
     for imp in imports {
-        let module = imp.split(|c| c == '/' || c == ':').next().unwrap_or(&imp);
-        let module = module.trim_start_matches("./").trim_start_matches("../");
-        if module.is_empty() {
-            continue;
-        }
+        let Some(module) = module_of(&imp) else { continue };
         let mid = NodeId(format!("node:mod/{module}"));
         if !out.nodes.iter().any(|n| n.id == mid) {
             out.nodes.push(Node {
                 id: mid.clone(),
                 kind: NodeKind::Module,
-                name: module.to_string(),
+                name: module.clone(),
                 summary: String::new(),
                 attrs: Default::default(),
                 spans: vec![file_span.id.clone()],
@@ -148,14 +148,52 @@ fn extract_lang(
             vec![file_span.id.clone()],
         ));
     }
+
+    // this file's identity for relinking: its basename (stem), plus, for a
+    // crate root (.../src/lib.rs or main.rs), the crate name with dashes
+    // turned to underscores, so `use ca_model::...` resolves to its lib.rs.
+    let mut map = BTreeMap::new();
+    let parts: Vec<&str> = rel.split('/').collect();
+    if let Some(stem) = parts.last().and_then(|f| f.rsplit('.').nth(1)) {
+        map.insert(stem.to_string(), file_id.clone());
+    }
+    if rel.ends_with("/src/lib.rs") || rel.ends_with("/src/main.rs") {
+        if let Some(crate_dir) = parts.iter().rev().nth(2) {
+            map.insert(crate_dir.replace('-', "_"), file_id.clone());
+        }
+    }
+    map
 }
 
-pub fn extract_rust(file_span: &Span, src_root: &str, out: &mut ExtractOut) {
-    let p = pats();
-    extract_lang(file_span, src_root, out, "rust", RUST, &p.rust_def, &p.rust_use, "///");
+/// Rust: `use crate::plan::X` -> plan; `use ca_model::Model` -> ca_model;
+/// `use super::plan` -> plan. Returns the module identifier to match files.
+fn rust_module_of(imp: &str) -> Option<String> {
+    let segs: Vec<&str> = imp.split("::").collect();
+    let first = *segs.first()?;
+    let m = if matches!(first, "crate" | "super" | "self") {
+        *segs.get(1)?
+    } else {
+        first
+    };
+    (!m.is_empty()).then(|| m.to_string())
 }
 
-pub fn extract_ts(file_span: &Span, src_root: &str, out: &mut ExtractOut) {
+/// TS: `./robots.ts` -> robots; `./swarm/swarm.ts` -> swarm; bare/node
+/// specifiers (`node:fs`, `playwright`) reduce to their own stem and simply
+/// will not match any in-repo file, staying external.
+fn ts_module_of(imp: &str) -> Option<String> {
+    let path = imp.trim_start_matches("./").trim_start_matches("../");
+    let last = path.rsplit('/').next().unwrap_or(path);
+    let stem = last.split('.').next().unwrap_or(last); // strip .ts/.tsx/.mjs
+    (!stem.is_empty()).then(|| stem.to_string())
+}
+
+pub fn extract_rust(file_span: &Span, src_root: &str, out: &mut ExtractOut) -> BTreeMap<String, NodeId> {
     let p = pats();
-    extract_lang(file_span, src_root, out, "typescript", TS, &p.ts_def, &p.ts_import, "//");
+    extract_lang(file_span, src_root, out, "rust", RUST, &p.rust_def, &p.rust_use, "///", &rust_module_of)
+}
+
+pub fn extract_ts(file_span: &Span, src_root: &str, out: &mut ExtractOut) -> BTreeMap<String, NodeId> {
+    let p = pats();
+    extract_lang(file_span, src_root, out, "typescript", TS, &p.ts_def, &p.ts_import, "//", &ts_module_of)
 }
