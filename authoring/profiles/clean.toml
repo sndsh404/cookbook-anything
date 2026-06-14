@@ -1,0 +1,32 @@
+name = "clean"
+source = "baseline: the calm technical look of the two reference posts"
+kind = "design"
+
+[structure]
+opening = "problem"
+section_flow = "concept-walk"
+close = "reading-list"
+heading_case = "lower"
+typical_sections = 7
+figures_per_post = 4
+
+[voice]
+person = "second"
+sentence_rhythm = "short to medium, plain"
+analogies = "light"
+tone = "plain, confident"
+notes = "the neutral baseline; concrete before abstract, one idea per paragraph"
+
+[type]
+body_font = "monospace"
+heading_font = "monospace"
+
+[figures]
+mode = "clean"
+background = "#fbfaf8"
+ink = "#1a1a2e"
+palette = ["#e63946", "#2a9d8f", "#e9a23b", "#9aa5b1", "#1a1a2e"]
+line_weight = 2.0
+grid = "light-dotted"
+caption_style = "italic"
+font_min_pt = 9

@@ -1,0 +1,40 @@
+# A style profile. Every field is optional; anything missing falls back to the
+# baseline (monospace body, lowercase headings, italic one-line captions, a
+# clean calm figure look). A profile is a STYLE, not content: it describes how
+# a post in this style is shaped and how it looks, never what it says.
+#
+# Copy this file, rename it, and fill in what you know. build_profile.py emits
+# a skeleton like this from a fetched site, with the [voice] notes left for you.
+
+name = "example"
+source = "where this style came from (a post title, a design file, a site URL)"
+kind = "post"            # post | design | site
+
+[structure]              # drives scaffold.py
+opening = "analogy"      # analogy | surprising-fact | from-scratch | problem | definition
+section_flow = "concept-walk"   # concept-walk | build-derive-compare | problem-solution | survey
+close = "reading-list"   # reading-list | summary | call-to-action | your-turn
+heading_case = "lower"   # lower | sentence | title
+typical_sections = 6     # rough count, for the scaffold
+figures_per_post = 4     # rough count, for figure slots
+
+[voice]                  # notes you (or the in-session step) write; the scripts do not parse prose
+person = "first-plural"  # first-plural ("we") | first-singular ("I") | second ("you") | third
+sentence_rhythm = "short-to-medium, plain, few subordinate clauses"
+analogies = "heavy"      # heavy | light | none
+tone = "plain, confident, unhurried"
+notes = "open concrete before abstract; one idea per paragraph; no hype words"
+
+[type]                   # drives final layout + figure fonts
+body_font = "monospace"
+heading_font = "monospace"
+
+[figures]                # drives style.py (matplotlib)
+mode = "clean"           # clean | xkcd
+background = "#fbfaf8"
+ink = "#1a1a2e"          # text, axes
+palette = ["#e63946", "#2a9d8f", "#e9a23b", "#9aa5b1", "#1a1a2e"]
+line_weight = 2.0
+grid = "light-dotted"    # light-dotted | none | solid
+caption_style = "italic" # the one-line takeaway under each figure
+font_min_pt = 9

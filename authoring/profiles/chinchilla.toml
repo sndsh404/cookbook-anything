@@ -1,0 +1,32 @@
+name = "chinchilla"
+source = "chinchilla from scratch, dense vs moe (Sandesh Bhandari)"
+kind = "post"
+
+[structure]
+opening = "surprising-fact"        # "one of the most surprising things..."
+section_flow = "build-derive-compare"  # build a tiny version, derive its behavior, compare approaches
+close = "reading-list"
+heading_case = "lower"
+typical_sections = 8
+figures_per_post = 5
+
+[voice]
+person = "first-plural"
+sentence_rhythm = "short to medium, precise, numbers stated plainly"
+analogies = "light"
+tone = "plain, curious, rigorous without being dry"
+notes = "state a surprising result, then build the smallest thing that shows it from scratch; derive and measure; compare two approaches on real data; numbers carry the argument"
+
+[type]
+body_font = "monospace"
+heading_font = "monospace"
+
+[figures]
+mode = "clean"
+background = "#fbfaf8"
+ink = "#1a1a2e"
+palette = ["#e63946", "#2a9d8f", "#e9a23b", "#9aa5b1", "#1a1a2e"]
+line_weight = 2.0
+grid = "light-dotted"
+caption_style = "italic"
+font_min_pt = 9

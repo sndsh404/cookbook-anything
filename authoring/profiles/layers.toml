@@ -1,0 +1,32 @@
+name = "layers"
+source = "layers of modern computing (Sandesh Bhandari)"
+kind = "post"
+
+[structure]
+opening = "analogy"            # opens on the John Deere tractor, ownership vs control
+section_flow = "concept-walk"  # one concept per lowercase heading, walked in order
+close = "reading-list"
+heading_case = "lower"
+typical_sections = 12
+figures_per_post = 6
+
+[voice]
+person = "third"
+sentence_rhythm = "medium, plain declaratives, concrete nouns, little hedging"
+analogies = "heavy"
+tone = "plain, confident, a little wry"
+notes = "open with a vivid concrete story, then name the through-line it reveals; walk it concept by concept; let the analogy carry the abstraction"
+
+[type]
+body_font = "monospace"
+heading_font = "monospace"
+
+[figures]
+mode = "clean"
+background = "#fbfaf8"
+ink = "#1a1a2e"
+palette = ["#e63946", "#2a9d8f", "#e9a23b", "#9aa5b1", "#1a1a2e"]
+line_weight = 2.0
+grid = "light-dotted"
+caption_style = "italic"
+font_min_pt = 9
