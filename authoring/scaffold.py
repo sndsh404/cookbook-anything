@@ -26,11 +26,32 @@ OPENING_PROMPT = {
     "definition": "Open by naming {topic} and its one-line job, then why it matters.",
 }
 
+# Long by default: each flow lists enough sections to carry a thorough post.
+# The cap in build() picks how many to use from the profile, with a floor so a
+# scaffold never comes out short. Develop each section fully; never pad.
 FLOW_SECTIONS = {
-    "concept-walk": ["the core idea", "how it works", "where it bites", "a worked example", "the trade-off"],
-    "build-derive-compare": ["build the smallest version", "derive its behavior", "measure it", "compare two approaches", "what scales and what doesn't"],
-    "problem-solution": ["the problem", "why the obvious fix fails", "the approach", "how it works", "limits"],
-    "survey": ["the landscape", "approach one", "approach two", "approach three", "how to choose"],
+    "concept-walk": [
+        "the core idea", "a first concrete example", "how it works",
+        "the mechanism, step by step", "where it bites", "a worked example",
+        "edge cases and failure modes", "the trade-off", "when to reach for it",
+        "what it changes downstream",
+    ],
+    "build-derive-compare": [
+        "build the smallest version", "what the pieces do", "derive its behavior",
+        "the math behind it", "measure it", "a second measurement",
+        "compare two approaches", "where each one wins",
+        "what scales and what doesn't", "the limits",
+    ],
+    "problem-solution": [
+        "the problem", "why it matters", "why the obvious fix fails",
+        "the key insight", "the approach", "how it works", "a worked example",
+        "where it still breaks", "what it costs", "when it is worth it",
+    ],
+    "survey": [
+        "the landscape", "the dimension that matters", "approach one",
+        "approach two", "approach three", "approach four", "how they compare",
+        "the trade-offs", "how to choose", "what comes next",
+    ],
 }
 
 CLOSE_PROMPT = {
@@ -63,7 +84,10 @@ def build(topic: str, prof: dict) -> str:
     hc = st["heading_case"]
     flow = st["section_flow"]
     sections = FLOW_SECTIONS.get(flow, FLOW_SECTIONS["concept-walk"])
-    n_sections = max(3, min(st.get("typical_sections", 6), len(sections) + 2))
+    # Long by default: use the profile's section count, but never fewer than 7,
+    # and never more than the flow provides. Each section is fully developed.
+    want = st.get("typical_sections", 8) or 8
+    n_sections = max(7, min(want, len(sections)))
     n_figs = st.get("figures_per_post", 4)
     fig_recipes = FIG_SUGGEST.get(flow, FIG_SUGGEST["concept-walk"])
     close_h, close_note = CLOSE_PROMPT.get(st["close"], CLOSE_PROMPT["reading-list"])
@@ -82,9 +106,12 @@ def build(topic: str, prof: dict) -> str:
 
     # body sections, with figure/image slots distributed through them
     body = sections[: n_sections]
+    # spread the figure slots evenly across the whole body, not just the front
     fig_at = set()
-    for k in range(n_figs):
-        fig_at.add(min(k * max(len(body) // max(n_figs, 1), 1), len(body) - 1))
+    if n_figs > 0:
+        step = len(body) / n_figs
+        for k in range(n_figs):
+            fig_at.add(min(int(k * step), len(body) - 1))
     fi = 0
     for i, sec in enumerate(body):
         out.append(f"## {case(sec, hc)}\n")
