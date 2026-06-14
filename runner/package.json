@@ -1,9 +1,0 @@
-{
-  "name": "cookbook-anything-runner",
-  "private": true,
-  "type": "module",
-  "description": "TypeScript stage runner: acquire (fetch ladder, robots, cache, license gate), stages, mcp. Runs on node --experimental-strip-types; no runtime deps by design (global fetch, node:http, node:fs).",
-  "scripts": {
-    "acquire": "node --experimental-strip-types acquire/acquire.ts"
-  }
-}

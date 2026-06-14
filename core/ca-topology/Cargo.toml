@@ -1,9 +1,0 @@
-[package]
-name = "ca-topology"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-ca-model = { path = "../ca-model" }
-serde = { workspace = true }
-serde_json = { workspace = true }

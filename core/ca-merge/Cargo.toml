@@ -1,7 +1,0 @@
-[package]
-name = "ca-merge"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-ca-model = { path = "../ca-model" }
