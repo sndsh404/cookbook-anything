@@ -65,6 +65,11 @@ pub fn verify(model: &Model, draft: &str) -> VerifyReport {
 
     let mut broken: Vec<String> = Vec::new();
     let markers = extract_markers(draft);
+    // a marker is BACKED only if it resolves to a claim whose spans all exist
+    // (and, for a verbatim doc claim, whose text is actually in its span).
+    // A broken marker is NOT backed, so it lowers coverage - that is what
+    // makes breaking a fact drop the score.
+    let mut n_backed = 0usize;
     for (id, _sentence) in &markers {
         match claims.get(id.as_str()) {
             None => broken.push(format!("marker {{{{{id}}}}} resolves to no claim")),
@@ -89,8 +94,10 @@ pub fn verify(model: &Model, draft: &str) -> VerifyReport {
                             "claim {id} text does not appear in its cited spans: \"{}\"",
                             &c.text.chars().take(60).collect::<String>()
                         ));
+                        continue;
                     }
                 }
+                n_backed += 1;
             }
         }
     }
@@ -153,9 +160,13 @@ pub fn verify(model: &Model, draft: &str) -> VerifyReport {
         }
     }
 
+    // coverage measures the FINISHED prose: of every factual sentence (a
+    // marked sentence, or an unmarked sentence that reads as a fact), how many
+    // are backed by a claim that resolves to a live span. The writer never
+    // gets to report this; it is recomputed here from the paper.
     let n_marked = markers.len();
-    let denom = n_marked + unsupported.len();
-    let coverage = if denom == 0 { 100.0 } else { 100.0 * n_marked as f64 / denom as f64 };
+    let n_factual = n_marked + unsupported.len();
+    let coverage = if n_factual == 0 { 100.0 } else { 100.0 * n_backed as f64 / n_factual as f64 };
     VerifyReport {
         coverage_pct: (coverage * 10.0).round() / 10.0,
         n_marked,

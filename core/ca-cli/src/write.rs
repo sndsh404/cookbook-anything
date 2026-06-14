@@ -1,25 +1,26 @@
-//! write: drafts paper.md strictly from the model, and TEACHES on top of the
-//! verified facts. Each chapter follows the six-move template distilled from
-//! Grokking Algorithms (see MEMORY.md): problem first, name the job, walk one
-//! worked example along real call edges, a figure that shows interaction,
-//! explain the key files in plain language, close with what you can now do.
+//! brief + assemble: the writer is split in two so the model can write and
+//! the checks can run AFTER, never the writer grading itself.
 //!
-//! Provenance is unchanged: every factual sentence carries a {{c:NNNN}}
-//! marker that resolves to a claim with spans. The teaching is in WHICH true
-//! facts we surface and how we sequence them, never in inventing new ones.
+//!   ca brief    -> emits brief.json: per chapter, a menu of VERIFIED facts
+//!                  (each {id, text, span}). Every fact is span-backed; the
+//!                  author may only reword and sequence these, never invent.
+//!   (author)    -> brief.json into authored.json (prose + per-sentence
+//!                  citations). A Claude subagent today, runner/write/author.ts
+//!                  against the API later. Same files either way.
+//!   ca assemble -> stitches authored.json + the deterministic appendices into
+//!                  paper.draft.md (markers) and paper.md (stripped).
+//!   ca verify   -> independently scores coverage over the FINISHED prose.
+//!
+//! Provenance is unchanged: the appendices and the claim/span system are the
+//! same. What changed is that the writer no longer fills a fixed template, and
+//! no longer certifies its own coverage.
 
 use ca_model::{Claim, ClaimId, Model, NodeKind, SpanRefs};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
-use std::path::Path;
 
 use crate::plan::{Chapter, Plan};
-
-pub struct WriteOut {
-    pub paper: String,
-    pub n_factual: usize,
-    pub n_marked: usize,
-}
 
 // ----- read-only snapshots taken before any minting (avoids borrow conflicts)
 
@@ -153,14 +154,6 @@ fn snapshot(model: &Model) -> Snap {
 
 fn basename(name: &str) -> String {
     name.replace('\\', "/").rsplit('/').next().unwrap_or(name).to_string()
-}
-
-/// Render a verbatim claim for the BODY under the voice profile: em dashes
-/// out (no em dashes anywhere we author prose). The claim's text in the model
-/// and the claims appendix stays exactly as the source had it; this only
-/// affects display, and the claim id still resolves to the same span.
-fn display(text: &str) -> String {
-    text.replace('\u{2014}', " - ")
 }
 
 /// When a basename collides (five lib.rs), qualify with the nearest
@@ -301,110 +294,226 @@ fn file_role(fid: &str, snap: &Snap) -> String {
     format!("{loc} lines of {lang}")
 }
 
-// ----- minting helper
+// ===================================================================
+// brief: a per-chapter menu of verified facts the author may reword
+// ===================================================================
 
-fn mint(model: &mut Model, next: &mut usize, text: String, spans: SpanRefs) -> String {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Fact {
+    pub id: String,
+    pub text: String,
+    pub locator: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ChapterBrief {
+    pub index: usize,
+    pub title: String,
+    pub figure: String,
+    pub figure_recipe: String,
+    pub path_labels: Vec<String>,
+    pub why: Vec<Fact>,
+    pub path: Vec<Fact>,
+    pub files: Vec<Fact>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Brief {
+    pub repo: String,
+    pub n_files: usize,
+    pub n_functions: usize,
+    pub tldr: Vec<Fact>,
+    pub intro: Vec<Fact>,
+    pub chapters: Vec<ChapterBrief>,
+    pub cookbook_md: String,
+    pub glossary_md: String,
+    pub claims_appendix_md: String,
+    pub unverified_appendix_md: String,
+}
+
+/// Mint a derived fact as a real span-backed claim and return it. Same
+/// mechanism the old writer used; here the text is a neutral statement the
+/// author rewords, and the id is what the author cites.
+fn mint_fact(model: &mut Model, next: &mut usize, text: String, span_id: String, locator: String) -> Fact {
     let id = ClaimId(format!("c:w{:04}", *next));
     *next += 1;
-    model.claims.push(Claim::new(id.clone(), text.clone(), spans, 0.9));
-    format!("{text} {{{{{}}}}}", id.0)
+    model.claims.push(Claim::new(
+        id.clone(),
+        text.clone(),
+        SpanRefs::new(ca_model::SpanId(span_id), vec![]),
+        0.9,
+    ));
+    Fact { id: id.0, text, locator }
 }
 
-fn span_of(snap: &Snap, fid: &str) -> Option<SpanRefs> {
-    snap.file_first_span.get(fid).map(|s| SpanRefs::new(ca_model::SpanId(s.clone()), vec![]))
+fn loc_for_span(snap: &Snap, span_id: &str) -> String {
+    snap.span_loc.get(span_id).cloned().unwrap_or_default()
 }
 
-pub fn write_paper(
-    model: &mut Model,
-    plan: &Plan,
-    repo_name: &str,
-    plant_unsupported: bool,
-) -> WriteOut {
+pub fn build_brief(model: &mut Model, plan: &Plan, repo: &str) -> Brief {
+    // derived facts are regenerated every run; drop stale ones first
     model.claims.retain(|c| !c.id.0.starts_with("c:w"));
     let snap = snapshot(model);
-    let (intro_claims, chapter_claims) = assign_claims(plan, &snap);
-
-    let mut p = String::new();
-    let mut nf = 0usize;
-    let mut nm = 0usize;
+    let (intro_ids, chapter_claim_ids) = assign_claims(plan, &snap);
     let mut next_w = 1usize;
-    let mut used_claims: HashSet<String> = HashSet::new();
+
+    let doc_fact = |id: &str| -> Option<Fact> {
+        snap.doc_claims.iter().find(|c| c.id == id).map(|c| Fact {
+            id: c.id.clone(),
+            text: c.text.clone(),
+            locator: c.spans.first().map(|s| loc_for_span(&snap, s)).unwrap_or_default(),
+        })
+    };
 
     let n_files = snap.file_lang.len();
-    let n_fns = model.nodes.iter().filter(|n| n.kind == NodeKind::Function).count();
-    let Some(any_span) = snap.file_first_span.values().next().cloned() else {
-        return WriteOut { paper: "(empty model)".into(), n_factual: 0, n_marked: 0 };
-    };
-    let anchor = || SpanRefs::new(ca_model::SpanId(any_span.clone()), vec![]);
+    let n_functions = model.nodes.iter().filter(|n| n.kind == NodeKind::Function).count();
 
-    // ---------------- TL;DR
-    writeln!(p, "# {repo_name}: a guided cookbook\n").ok();
-    writeln!(p, "## TL;DR\n").ok();
-    let s = mint(model, &mut next_w,
-        format!("This is a tour of {repo_name}, compiled from its own source into a model of {n_files} files and {n_fns} functions, every sentence below traceable to a span."),
-        anchor());
-    nf += 1; nm += 1;
-    write!(p, "{s} ").ok();
-    let s = mint(model, &mut next_w,
-        format!("Each chapter takes one area, shows the problem it solves, and walks a real path through the code, so by the end you can change it yourself."),
-        anchor());
-    nf += 1; nm += 1;
-    writeln!(p, "{s}\n").ok();
-    writeln!(p, "![the system in one figure](figures/fig_page_one.png)\n").ok();
-    writeln!(p, "*Figure: the layers of {repo_name}. Each cluster is a box; the chapters that follow open them up one at a time.*\n").ok();
+    // tldr facts (minted, anchored to any real span)
+    let mut tldr = Vec::new();
+    if let Some(any) = snap.file_first_span.values().next().cloned() {
+        let loc = loc_for_span(&snap, &any);
+        tldr.push(mint_fact(
+            model,
+            &mut next_w,
+            format!("{repo} compiles to a model of {n_files} files and {n_functions} functions, and every fact in this tour resolves to a source span"),
+            any,
+            loc,
+        ));
+    }
 
-    // ---------------- Introduction (problem first, thesis claims)
-    writeln!(p, "## Introduction\n").ok();
-    writeln!(p, "Read it like this: the source is compiled into a model, and every sentence here is pinned to a span in that model. In the project's own words:\n").ok();
-    let mut intro_used = 0;
-    for cid in &intro_claims {
-        if let Some(c) = snap.doc_claims.iter().find(|c| &c.id == cid) {
-            write!(p, "{} {{{{{}}}}} ", display(&c.text), c.id).ok();
-            used_claims.insert(cid.clone());
-            nf += 1; nm += 1;
-            intro_used += 1;
+    let intro: Vec<Fact> = intro_ids.iter().filter_map(|id| doc_fact(id)).collect();
+
+    let mut chapters = Vec::new();
+    for ch in &plan.chapters {
+        let why: Vec<Fact> = chapter_claim_ids
+            .get(&ch.index)
+            .map(|ids| ids.iter().filter_map(|id| doc_fact(id)).collect())
+            .unwrap_or_default();
+
+        let path_labels: Vec<String> = ch.worked_path.iter().map(|id| snap.label(id)).collect();
+        let mut path = Vec::new();
+        for w in ch.worked_path.windows(2) {
+            let (a, b) = (&w[0], &w[1]);
+            if let Some(sp) = snap.file_first_span.get(a).cloned() {
+                let loc = loc_for_span(&snap, &sp);
+                let (la, lb) = (snap.label(a), snap.label(b));
+                path.push(mint_fact(model, &mut next_w, format!("`{la}` calls into `{lb}`"), sp, loc));
+            }
         }
-    }
-    if intro_used > 0 {
-        writeln!(p, "\n").ok();
-    }
-    if plant_unsupported {
-        writeln!(p, "The scheduler rebalances shards every night at 02:00 UTC.\n").ok();
-        nf += 1;
-    }
-    writeln!(p, "Read the chapters in order; each assumes only what came before. Use the cookbook at the end to turn the tour into commands.\n").ok();
-    writeln!(p, "Chapter map:\n").ok();
-    for ch in &plan.chapters {
-        writeln!(p, "- Chapter {}: {}", ch.index + 1, ch.title).ok();
-    }
-    writeln!(p).ok();
 
-    // ---------------- chapters (the six-move template)
-    for ch in &plan.chapters {
-        write_chapter(&mut p, model, &mut next_w, &mut nf, &mut nm, ch, &snap,
-                      &chapter_claims, &mut used_claims);
+        let mut files = Vec::new();
+        let mut seen = HashSet::new();
+        for fid in &ch.key_files {
+            let label = snap.label(fid);
+            if !seen.insert(label.clone()) {
+                continue;
+            }
+            if let Some(sp) = snap.file_first_span.get(fid).cloned() {
+                let loc = loc_for_span(&snap, &sp);
+                let role = file_role(fid, &snap);
+                files.push(mint_fact(model, &mut next_w, format!("`{label}`: {role}"), sp, loc));
+            }
+            if files.len() >= 5 {
+                break;
+            }
+        }
+
+        chapters.push(ChapterBrief {
+            index: ch.index,
+            title: ch.title.clone(),
+            figure: format!("fig_ch{}.png", ch.index + 1),
+            figure_recipe: ch.figure.recipe.clone(),
+            path_labels,
+            why,
+            path,
+            files,
+        });
     }
 
-    // ---------------- cookbook (real recipes traced to files)
-    write_cookbook(&mut p, &snap, plan);
+    let cookbook_md = cookbook_md(&snap, plan);
+    let glossary_md = glossary_md(model);
+    let claims_appendix_md = claims_appendix_md(model, &snap);
+    let unverified_appendix_md = unverified_appendix_md(model);
 
-    // ---------------- glossary
+    Brief {
+        repo: repo.to_string(),
+        n_files,
+        n_functions,
+        tldr,
+        intro,
+        chapters,
+        cookbook_md,
+        glossary_md,
+        claims_appendix_md,
+        unverified_appendix_md,
+    }
+}
+
+// ----- the deterministic tail (appendices, glossary, cookbook) -----
+
+fn cookbook_md(snap: &Snap, _plan: &Plan) -> String {
+    let mut p = String::new();
+    writeln!(p, "## The cookbook\n").ok();
+    writeln!(p, "Concrete tasks, each traced to the files you touch.\n").ok();
+    let has = |needle: &str| snap.node_name.values().any(|n| n.replace('\\', "/").contains(needle));
+    let mut n = 0;
+    if has("runner/stages.ts") {
+        n += 1;
+        writeln!(p, "### {n}. Run it on a codebase\n").ok();
+        writeln!(p, "```").ok();
+        writeln!(p, "node --experimental-strip-types runner/stages.ts <sources-dir> <workspace> <name>").ok();
+        writeln!(p, "```").ok();
+        writeln!(p, "Edit: nothing. Run: `runner/stages.ts`. Expected: a graded paper at `<workspace>/out/paper.md` with figures. Verified by: `tests/test_m4_ship.py`.\n").ok();
+    }
+    if has("figlib/recipes/__init__.py") {
+        n += 1;
+        writeln!(p, "### {n}. Add a figure recipe\n").ok();
+        writeln!(p, "1. Create `figlib/recipes/yourrecipe.py` with a `render(payload, model)` function, modeled on `figlib/recipes/quantity.py`.").ok();
+        writeln!(p, "2. Register it in `figlib/recipes/__init__.py` (the `registry()` map) and add its ceiling to `CEILINGS`.").ok();
+        writeln!(p, "3. Expected: `python figlib/figcheck.py` passes your figure with provenance resolving to the model.").ok();
+        writeln!(p, "4. Verified by: `tests/test_m2_figures.py` (the seeded-defect critic must stay at 10/10).\n").ok();
+    }
+    if has("core/ca-extract/src/nativecode.rs") {
+        n += 1;
+        writeln!(p, "### {n}. Teach the compiler a new language\n").ok();
+        writeln!(p, "1. Add an extractor in `core/ca-extract/src/` (model it on `nativecode.rs`: emit a file node, `defines` edges, and `imports`).").ok();
+        writeln!(p, "2. Dispatch it by extension in `core/ca-cli/src/main.rs` (the compile loop).").ok();
+        writeln!(p, "3. Expected: `ca compile` produces nodes for the new files, all edges carrying your extractor's name.").ok();
+        writeln!(p, "4. Verified by: `tests/test_m1_compile.py` (100% of edges must keep an extractor).\n").ok();
+    }
+    if n == 0 {
+        writeln!(p, "(No recipe templates detected in this codebase.)\n").ok();
+    }
+    p
+}
+
+fn glossary_md(model: &Model) -> String {
+    let mut p = String::new();
     writeln!(p, "## Glossary\n").ok();
     for g in model.glossary.iter().take(20) {
         writeln!(p, "- **{}**: {} ({})", g.term, g.definition.replace('\u{2014}', "-"), g.first_span.0).ok();
     }
     writeln!(p).ok();
+    p
+}
 
-    // ---------------- claims appendix (the receipt)
+fn claims_appendix_md(model: &Model, snap: &Snap) -> String {
+    let mut p = String::new();
     writeln!(p, "## Claims appendix\n").ok();
     for c in &model.claims {
-        let locs: Vec<&str> =
-            c.spans.iter().filter_map(|sp| snap.span_loc.get(sp.0.as_str()).map(|s| s.as_str())).collect();
+        let locs: Vec<&str> = c
+            .spans
+            .iter()
+            .filter_map(|sp| snap.span_loc.get(sp.0.as_str()).map(|s| s.as_str()))
+            .collect();
         writeln!(p, "- `{}` \"{}\" -> {}", c.id.0, c.text, locs.join(", ")).ok();
     }
     writeln!(p).ok();
+    p
+}
 
-    // ---------------- unverified appendix
+fn unverified_appendix_md(model: &Model) -> String {
+    let mut p = String::new();
     writeln!(p, "## Unverified appendix\n").ok();
     let unverified: Vec<String> = model
         .edges
@@ -418,171 +527,59 @@ pub fn write_paper(
     for u in unverified {
         writeln!(p, "{u}").ok();
     }
-
-    WriteOut { paper: p, n_factual: nf, n_marked: nm }
+    writeln!(p).ok();
+    p
 }
 
-#[allow(clippy::too_many_arguments)]
-fn write_chapter(
-    p: &mut String,
-    model: &mut Model,
-    next_w: &mut usize,
-    nf: &mut usize,
-    nm: &mut usize,
-    ch: &Chapter,
-    snap: &Snap,
-    chapter_claims: &HashMap<usize, Vec<String>>,
-    used: &mut HashSet<String>,
-) {
-    writeln!(p, "## Chapter {}: {}\n", ch.index + 1, ch.title).ok();
+// ===================================================================
+// assemble: stitch authored prose + the deterministic tail into a paper
+// ===================================================================
 
-    // move 1: PROBLEM FIRST - open with the design claims this area embodies
-    let claims: Vec<&DocClaim> = chapter_claims
-        .get(&ch.index)
-        .map(|ids| {
-            ids.iter()
-                .filter(|id| !used.contains(*id))
-                .filter_map(|id| snap.doc_claims.iter().find(|c| &c.id == id))
-                .collect()
-        })
-        .unwrap_or_default();
-    if !claims.is_empty() {
-        writeln!(p, "See why this area exists, in the project's own words:\n").ok();
-        for c in claims.iter().take(3) {
-            write!(p, "{} {{{{{}}}}} ", display(&c.text), c.id).ok();
-            used.insert(c.id.clone());
-            *nf += 1;
-            *nm += 1;
-        }
-        writeln!(p, "\n").ok();
-    }
+#[derive(Deserialize)]
+pub struct AuthoredChapter {
+    pub index: usize,
+    pub markdown: String,
+}
 
-    // move 2: NAME THE JOB - the anchor file and what it defines, span-backed
-    let key = &ch.key_files;
-    if let Some(first_key) = key.first() {
-        if let Some(spans) = span_of(snap, first_key) {
-            let role = file_role(first_key, snap);
-            let s = mint(model, next_w,
-                format!("At the center of `{}` is `{}`: {}.", ch.title, snap.label(first_key), role),
-                spans);
-            writeln!(p, "{s}\n").ok();
-            *nf += 1;
-            *nm += 1;
-        }
-    }
+#[derive(Deserialize)]
+pub struct Authored {
+    pub tldr: String,
+    pub page_one_caption: String,
+    pub intro: String,
+    pub chapters: Vec<AuthoredChapter>,
+}
 
-    // move 3 + 4: WORKED EXAMPLE along a real path, then the teaching figure
-    if ch.worked_path.len() >= 2 {
-        let names: Vec<String> = ch.worked_path.iter().map(|id| snap.label(id)).collect();
-        let path_spans: Vec<ca_model::SpanId> = ch
-            .worked_path
-            .iter()
-            .filter_map(|id| snap.file_first_span.get(id).map(|s| ca_model::SpanId(s.clone())))
-            .collect();
-        if let Some((first, rest)) = path_spans.split_first() {
-            let chain = names
-                .iter()
-                .enumerate()
-                .map(|(i, n)| if i == 0 { format!("`{n}`") } else { format!("which reaches into `{n}`") })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let s = mint(model, next_w,
-                format!("Follow one real path through {}: start at {}.", ch.title, chain),
-                SpanRefs::new(first.clone(), rest.to_vec()));
-            writeln!(p, "{s}\n").ok();
-            *nf += 1;
-            *nm += 1;
-        }
-        writeln!(p, "![how the pieces talk](figures/fig_ch{}.png)\n", ch.index + 1).ok();
-        let endpoints = format!("`{}` to `{}`", names.first().cloned().unwrap_or_default(), names.last().cloned().unwrap_or_default());
-        writeln!(p, "*Figure: the path from {endpoints}. Each box hands off to the next, so changing one tells you exactly what downstream it can touch.*\n").ok();
-    } else {
-        writeln!(p, "![how the pieces relate](figures/fig_ch{}.png)\n", ch.index + 1).ok();
-        writeln!(p, "*Figure: how the files in `{}` depend on each other. The hub is the file you change most carefully, because the others lean on it.*\n", ch.title).ok();
-    }
+pub fn assemble(brief: &Brief, authored: &Authored) -> String {
+    let repo = &brief.repo;
+    let mut p = String::new();
+    writeln!(p, "# {repo}: a guided cookbook\n").ok();
+    writeln!(p, "## TL;DR\n").ok();
+    writeln!(p, "{}\n", authored.tldr.trim()).ok();
+    writeln!(p, "![the system in one figure](figures/fig_page_one.png)\n").ok();
+    writeln!(p, "*Figure: {}*\n", authored.page_one_caption.trim()).ok();
 
-    // move 5: KEY FILES in plain language (deduped by label)
-    writeln!(p, "The pieces that matter here:\n").ok();
-    let mut seen_labels: HashSet<String> = HashSet::new();
-    let mut shown = 0;
-    for fid in key.iter() {
-        let name = snap.label(fid);
-        if !seen_labels.insert(name.clone()) {
-            continue;
-        }
-        let role = file_role(fid, snap);
-        if let Some(spans) = span_of(snap, fid) {
-            let s = mint(model, next_w, format!("`{name}`: {role}"), spans);
-            writeln!(p, "- {s}").ok();
-            *nf += 1;
-            *nm += 1;
-            shown += 1;
-        }
-        if shown >= 5 {
-            break;
-        }
+    writeln!(p, "## Introduction\n").ok();
+    writeln!(p, "{}\n", authored.intro.trim()).ok();
+    writeln!(p, "Chapter map:\n").ok();
+    for ch in &brief.chapters {
+        writeln!(p, "- Chapter {}: {}", ch.index + 1, ch.title).ok();
     }
     writeln!(p).ok();
 
-    // move 6: WHAT YOU CAN NOW DO
-    let capability = if ch.worked_path.len() >= 2 {
-        format!("open `{}` and follow the calls above to see how `{}` does its job end to end", snap.label(&ch.worked_path[0]), ch.title)
-    } else if let Some(k) = key.first() {
-        format!("start at `{}` and read outward; the figure shows what depends on it", snap.label(k))
-    } else {
-        format!("read the files in `{}` in the order above", ch.title)
-    };
-    writeln!(p, "What you can now do: {capability}.\n").ok();
-}
-
-fn write_cookbook(p: &mut String, snap: &Snap, plan: &Plan) {
-    writeln!(p, "## The cookbook\n").ok();
-    writeln!(p, "Concrete tasks, each traced to the files you touch.\n").ok();
-
-    let has = |needle: &str| snap.node_name.values().any(|n| n.replace('\\', "/").contains(needle));
-
-    let mut n = 0;
-    // recipe: run the whole pipeline
-    if has("runner/stages.ts") {
-        n += 1;
-        writeln!(p, "### {n}. Run it on a codebase\n").ok();
-        writeln!(p, "```").ok();
-        writeln!(p, "node --experimental-strip-types runner/stages.ts <sources-dir> <workspace> <name>").ok();
-        writeln!(p, "```").ok();
-        writeln!(p, "Edit: nothing. Run: `runner/stages.ts`. Expected: a graded paper at `<workspace>/out/paper.md` with figures. Verified by: `tests/test_m4_ship.py`.\n").ok();
+    for ch in &brief.chapters {
+        writeln!(p, "## Chapter {}: {}\n", ch.index + 1, ch.title).ok();
+        if let Some(a) = authored.chapters.iter().find(|c| c.index == ch.index) {
+            writeln!(p, "{}\n", a.markdown.trim()).ok();
+        } else {
+            writeln!(p, "(chapter not authored)\n").ok();
+        }
     }
-    // recipe: add a figure recipe
-    if has("figlib/recipes/__init__.py") {
-        n += 1;
-        writeln!(p, "### {n}. Add a figure recipe\n").ok();
-        writeln!(p, "1. Create `figlib/recipes/yourrecipe.py` with a `render(payload, model)` function, modeled on `figlib/recipes/quantity.py`.").ok();
-        writeln!(p, "2. Register it in `figlib/recipes/__init__.py` (the `registry()` map) and add its ceiling to `CEILINGS`.").ok();
-        writeln!(p, "3. Expected: `python figlib/figcheck.py` passes your figure with provenance resolving to the model.").ok();
-        writeln!(p, "4. Verified by: `tests/test_m2_figures.py` (the seeded-defect critic must stay at 10/10).\n").ok();
-    }
-    // recipe: add a language extractor
-    if has("core/ca-extract/src/nativecode.rs") {
-        n += 1;
-        writeln!(p, "### {n}. Teach the compiler a new language\n").ok();
-        writeln!(p, "1. Add an extractor in `core/ca-extract/src/` (model it on `nativecode.rs`: emit a file node, `defines` edges, and `imports`).").ok();
-        writeln!(p, "2. Dispatch it by extension in `core/ca-cli/src/main.rs` (the compile loop).").ok();
-        writeln!(p, "3. Expected: `ca compile` produces nodes for the new files, all edges carrying your extractor's name.").ok();
-        writeln!(p, "4. Verified by: `tests/test_m1_compile.py` (100% of edges must keep an extractor).\n").ok();
-    }
-    if n == 0 {
-        writeln!(p, "(No recipe templates detected in this codebase.)\n").ok();
-    }
-    let _ = plan;
-}
 
-pub fn coverage_json(out: &WriteOut) -> String {
-    let pct = if out.n_factual == 0 { 0.0 } else { 100.0 * out.n_marked as f64 / out.n_factual as f64 };
-    serde_json::json!({
-        "claim_coverage_pct": (pct * 10.0).round() / 10.0,
-        "n_factual": out.n_factual,
-        "n_marked": out.n_marked,
-    })
-    .to_string()
+    p.push_str(&brief.cookbook_md);
+    p.push_str(&brief.glossary_md);
+    p.push_str(&brief.claims_appendix_md);
+    p.push_str(&brief.unverified_appendix_md);
+    p
 }
 
 /// Strip {{c:...}} markers for the shipped paper (utf-8 safe, no regex dep).
@@ -603,12 +600,4 @@ pub fn strip_markers(s: &str) -> String {
     }
     out.push_str(rest);
     out
-}
-
-pub fn save(workspace: &Path, paper: &str, coverage: &str) -> std::io::Result<()> {
-    let out = workspace.join("out");
-    std::fs::create_dir_all(&out)?;
-    std::fs::write(out.join("paper.draft.md"), paper)?;
-    std::fs::write(out.join("coverage.json"), coverage)?;
-    Ok(())
 }

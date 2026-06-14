@@ -20,13 +20,14 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: ca <intake|compile|topology|plan|write|verify|validate|grade> <paths...>";
+    let usage = "usage: ca <intake|compile|topology|plan|brief|assemble|verify|validate|grade> <paths...>";
     match args.first().map(String::as_str) {
         Some("intake") if args.len() == 3 => cmd_intake(&args[1], &args[2]),
         Some("compile") if args.len() == 2 => cmd_compile(&args[1]),
         Some("topology") if args.len() == 2 => cmd_topology(&args[1]),
         Some("plan") if args.len() == 2 => cmd_plan(&args[1]),
-        Some("write") if args.len() >= 4 => cmd_write(&args[1], &args[2], &args[3], &args[4..]),
+        Some("brief") if args.len() == 4 => cmd_brief(&args[1], &args[2], &args[3]),
+        Some("assemble") if args.len() == 3 => cmd_assemble(&args[1], &args[2]),
         Some("verify") if args.len() == 3 => cmd_verify(&args[1], &args[2]),
         Some("validate") if args.len() == 2 => cmd_validate(&args[1]),
         Some("admit") if args.len() == 3 => cmd_admit(&args[1], &args[2]),
@@ -111,26 +112,14 @@ fn cmd_plan(cookbook: &str) -> ExitCode {
     }
 }
 
-fn cmd_write(cookbook: &str, workspace: &str, repo_name: &str, flags: &[String]) -> ExitCode {
-    let cb = PathBuf::from(cookbook);
-    let ws = PathBuf::from(workspace);
-    let plant = flags.iter().any(|f| f == "--plant-unsupported");
-    let ship = flags.iter().any(|f| f == "--ship");
-    let mut model = match Model::load(&cb.join("model.json")) {
-        Ok(m) => m,
-        Err(e) => {
-            eprintln!("write: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
-    let plan_json = std::fs::read_to_string(cb.join("plan.json")).unwrap_or_default();
-    let p: serde_json::Value = serde_json::from_str(&plan_json).unwrap_or_default();
-    // rebuild the Plan from json (only the fields the writer needs)
+fn load_plan(cb: &Path) -> plan::Plan {
     fn str_vec(v: &serde_json::Value) -> Vec<String> {
         v.as_array()
             .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
             .unwrap_or_default()
     }
+    let plan_json = std::fs::read_to_string(cb.join("plan.json")).unwrap_or_default();
+    let p: serde_json::Value = serde_json::from_str(&plan_json).unwrap_or_default();
     let chapters = p["chapters"]
         .as_array()
         .map(|a| {
@@ -139,10 +128,7 @@ fn cmd_write(cookbook: &str, workspace: &str, repo_name: &str, flags: &[String])
                     index: c["index"].as_u64().unwrap_or(0) as usize,
                     title: c["title"].as_str().unwrap_or("").to_string(),
                     cluster: c["cluster"].as_str().unwrap_or("").to_string(),
-                    node_ids: c["node_ids"]
-                        .as_array()
-                        .map(|v| v.iter().filter_map(|x| x.as_str().map(String::from)).collect())
-                        .unwrap_or_default(),
+                    node_ids: str_vec(&c["node_ids"]),
                     figure: plan::FigurePlan {
                         recipe: c["figure"]["recipe"].as_str().unwrap_or("").to_string(),
                         why: c["figure"]["why"].as_str().unwrap_or("").to_string(),
@@ -154,42 +140,74 @@ fn cmd_write(cookbook: &str, workspace: &str, repo_name: &str, flags: &[String])
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    let plan = plan::Plan {
+    plan::Plan {
         page_one: plan::FigurePlan { recipe: "architecture_box".into(), why: String::new() },
         chapters,
         forward_deps_dropped: 0,
-    };
+    }
+}
 
-    let out = write::write_paper(&mut model, &plan, repo_name, plant);
-    let cov = write::coverage_json(&out);
-    if let Err(e) = write::save(&ws, &out.paper, &cov) {
-        eprintln!("write: {e}");
+/// Stage 4a: emit the per-chapter verified facts the author will write from.
+/// No prose, no coverage self-report. Just facts, each span-backed.
+fn cmd_brief(cookbook: &str, workspace: &str, repo_name: &str) -> ExitCode {
+    let cb = PathBuf::from(cookbook);
+    let ws = PathBuf::from(workspace);
+    let mut model = match Model::load(&cb.join("model.json")) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("brief: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let plan = load_plan(&cb);
+    let brief = write::build_brief(&mut model, &plan, repo_name);
+    // minted facts are real claims now; persist them so verify/assemble resolve
+    model.save(&cb.join("model.json")).ok();
+    std::fs::create_dir_all(ws.join("out")).ok();
+    let brief_json = serde_json::to_string_pretty(&brief).unwrap();
+    if let Err(e) = std::fs::write(ws.join("out").join("brief.json"), &brief_json) {
+        eprintln!("brief: write failed: {e}");
         return ExitCode::FAILURE;
     }
-    // derived claims were minted into the model; persist them (audit trail)
-    model.save(&cb.join("model.json")).ok();
-    if let Ok(mut runs) = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(cb.join("runs.jsonl"))
-    {
-        let _ = writeln!(
-            runs,
-            "{}",
-            serde_json::json!({"at": ca_extract::intake::now_iso(), "stage": "write",
-                   "factual": out.n_factual, "marked": out.n_marked, "planted": plant})
-        );
-    }
-    if ship {
-        let shipped = write::strip_markers(&out.paper);
-        std::fs::write(ws.join("out").join("paper.md"), shipped).ok();
-    }
+    let n_facts: usize = brief.chapters.iter().map(|c| c.why.len() + c.path.len() + c.files.len()).sum();
     println!(
-        "[Stage 4/7] write: {} factual sentences, {} marked ({})",
-        out.n_factual,
-        out.n_marked,
-        cov
+        "[Stage 4a/7] brief: {} chapters, {} verified facts -> out/brief.json (awaiting author)",
+        brief.chapters.len(),
+        n_facts
     );
+    ExitCode::SUCCESS
+}
+
+/// Stage 4c: stitch the author's prose (out/authored.json) and the
+/// deterministic appendices into paper.draft.md (markers) and paper.md.
+fn cmd_assemble(cookbook: &str, workspace: &str) -> ExitCode {
+    let _ = cookbook;
+    let ws = PathBuf::from(workspace);
+    let out = ws.join("out");
+    let brief: write::Brief = match std::fs::read_to_string(out.join("brief.json"))
+        .map_err(|e| e.to_string())
+        .and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string()))
+    {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("assemble: cannot read brief.json: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let authored: write::Authored = match std::fs::read_to_string(out.join("authored.json"))
+        .map_err(|e| e.to_string())
+        .and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string()))
+    {
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("assemble: cannot read authored.json (has the author run?): {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let draft = write::assemble(&brief, &authored);
+    std::fs::write(out.join("paper.draft.md"), &draft).ok();
+    std::fs::write(out.join("paper.md"), write::strip_markers(&draft)).ok();
+    println!("[Stage 4c/7] assemble: paper.draft.md + paper.md written from authored prose");
     ExitCode::SUCCESS
 }
 

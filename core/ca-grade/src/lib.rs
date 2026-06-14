@@ -115,15 +115,29 @@ pub fn grade(workspace: &Path) -> Grade {
             push(&mut findings, Severity::P0, "page-one-figure",
                  "page-one figure missing from the paper head".into(), 20);
         }
-        // claim coverage: markers are stripped at ship; the writer records
-        // coverage in out/coverage.json
-        let cov_path = workspace.join("out").join("coverage.json");
-        if let Ok(t) = std::fs::read_to_string(&cov_path) {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&t) {
-                let cov = v["claim_coverage_pct"].as_f64().unwrap_or(0.0);
+        // claim coverage comes from `ca verify`, which recomputes it over the
+        // FINISHED prose (backed factual sentences / all factual sentences).
+        // The writer cannot report its own coverage; if verify did not run, or
+        // a marker broke, this gate fires.
+        let cov_path = workspace.join("out").join("verify_report.json");
+        match std::fs::read_to_string(&cov_path) {
+            Ok(t) => {
+                let v: serde_json::Value = serde_json::from_str(&t).unwrap_or_default();
+                let cov = v["coverage_pct"].as_f64().unwrap_or(0.0);
+                let broken = v["broken_markers"].as_array().map(|a| a.len()).unwrap_or(0);
                 if cov < 95.0 {
                     push(&mut findings, Severity::P0, "claim-coverage",
-                         format!("claim coverage {cov:.1}% < 95%"), 40);
+                         format!("claim coverage {cov:.1}% < 95% (independently measured by ca verify)"), 40);
+                }
+                if broken > 0 {
+                    push(&mut findings, Severity::P0, "claim-coverage",
+                         format!("{broken} factual sentence(s) cite a claim that no longer resolves to a span"), 40);
+                }
+            }
+            Err(_) => {
+                if paper.exists() {
+                    push(&mut findings, Severity::P0, "claim-coverage",
+                         "no verify_report.json: coverage was never independently checked".into(), 40);
                 }
             }
         }
