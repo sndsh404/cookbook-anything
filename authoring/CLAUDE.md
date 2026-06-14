@@ -22,10 +22,14 @@ is the short standing workflow.
    labels, a takeaway caption. **If a figure has no real data, leave it out , 
    never invent chart numbers.**
 
-4. **Write the prose.** Fill every section with real first-draft prose in the
-   profile's style: a hook to open, one concept per section, topic sentences,
-   the voice rules from DESIGN.md (no AI tells, plain and confident, analogies
-   that do work). Write a real one-line caption under each figure.
+4. **Write the prose, long and thorough.** Fill every section with real
+   first-draft prose in the profile's style: a hook to open, one concept per
+   section, topic sentences, the voice rules from DESIGN.md (no AI tells, plain
+   and confident, analogies that do work). Write a real one-line caption under
+   each figure. Default to the length of the reference posts, roughly 4,000 to
+   8,000+ words, with more sections than a short piece and every section fully
+   developed rather than summarized. The length comes from carrying each idea
+   all the way, never from padding.
 
 5. **Images only when the topic is visual.** For concrete subjects, fetch
    license-clean images with `fetch_images.py` and keep the attribution. For
@@ -39,6 +43,10 @@ is the short standing workflow.
 
 ## Hard rules, never break these
 
+- **Long by default.** Posts are long and thorough like the reference posts,
+  roughly 4,000 to 8,000+ words: more sections in the scaffold, each one fully
+  developed, not a summary. Long because every idea is carried all the way,
+  never because of padding.
 - **Real data only.** Drop a figure before you fake its numbers. No invented
   statistics, no invented sources.
 - **No paid autopilot.** Do the research and writing here, in-session, on the

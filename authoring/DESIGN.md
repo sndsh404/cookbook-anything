@@ -83,6 +83,12 @@ and every passage.
 
 ### Structure
 
+- **Long and thorough by default.** Posts match the reference posts in length,
+  roughly 4,000 to 8,000+ words. The scaffold carries more sections than a short
+  piece, and every section is fully developed prose, not a summary or a stub.
+  The length is earned by carrying each idea all the way, never by padding: if a
+  passage is filler, cut it, and if a section is thin, develop it rather than
+  pad it.
 - **Open with a hook.** An analogy, a surprising fact, or a concrete problem , 
   whatever the chosen profile specifies. The first paragraph earns the rest.
 - **One concept per section, walked in order.** Depth on a few ideas beats a
@@ -157,4 +163,6 @@ near-copies a source post with words swapped.
 4. Reading-list sources at the end; never inline per-sentence citations.
 5. Learn style from anyone; copy content and figures only from the author's
    own work or license-clean sources.
-6. Stay small.
+6. Long and thorough by default, roughly 4,000 to 8,000+ words like the
+   reference posts: more sections, each fully developed, never padded.
+7. Stay small.
