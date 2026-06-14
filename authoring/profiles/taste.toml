@@ -1,0 +1,32 @@
+name = "taste"
+source = "taste-skill (figure taste: declare the read, anti-default discipline, named failure modes)"
+kind = "design"
+
+[structure]
+opening = "definition"
+section_flow = "concept-walk"
+close = "summary"
+heading_case = "lower"
+typical_sections = 6
+figures_per_post = 5
+
+[voice]
+person = "second"
+sentence_rhythm = "short, declarative"
+analogies = "light"
+tone = "precise, opinionated about clarity"
+notes = "every figure declares its one read before it is drawn; cut anything that is not load-bearing"
+
+[type]
+body_font = "monospace"
+heading_font = "monospace"
+
+[figures]
+mode = "clean"
+background = "#ffffff"
+ink = "#222222"
+palette = ["#d1495b", "#30638e", "#3c896d", "#e3a72f", "#8a8d91"]
+line_weight = 1.8
+grid = "none"
+caption_style = "italic"
+font_min_pt = 9

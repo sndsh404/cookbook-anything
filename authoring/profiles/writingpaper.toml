@@ -1,0 +1,32 @@
+name = "writingpaper"
+source = "WritingAIPaper (CARS introduction, page-one figure, topic sentences, reviewer rubric)"
+kind = "design"
+
+[structure]
+opening = "problem"            # establish territory, find the niche, occupy it
+section_flow = "problem-solution"
+close = "summary"
+heading_case = "sentence"
+typical_sections = 7
+figures_per_post = 4
+
+[voice]
+person = "first-plural"
+sentence_rhythm = "medium, each paragraph opens with its claim"
+analogies = "none"
+tone = "measured, academic, claim-first"
+notes = "lead the paper with the one figure that carries it; every paragraph starts with a topic sentence"
+
+[type]
+body_font = "sans-serif"
+heading_font = "sans-serif"
+
+[figures]
+mode = "clean"
+background = "#ffffff"
+ink = "#1a1a1a"
+palette = ["#0b6e4f", "#08415c", "#cc2936", "#e0a458", "#6b7280"]
+line_weight = 1.6
+grid = "light-dotted"
+caption_style = "plain"
+font_min_pt = 9
