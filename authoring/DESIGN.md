@@ -75,20 +75,21 @@ and every passage.
 - **Plain and confident.** Short concrete sentences over long abstract ones.
   Say the thing.
 - **Analogies that do work.** A good analogy carries an idea the reader didn't
-  have; a decorative one wastes a sentence. The reference posts lean on this , 
-  the tractor that won't take a part, the desk and the filing cabinet, the
-  professors and the stadium of students.
+  have; a decorative one wastes a sentence. Strong technical writing leans on
+  this, for example a tractor that won't take a part, a desk and a filing
+  cabinet, professors and a stadium of students; match the kind and frequency of
+  analogy in the source or profile chosen for this run.
 - **Sterile is also slop.** Stripping all personality to sound "professional"
   is its own failure. The goal is a real human voice, not a neutral one.
 
 ### Structure
 
-- **Long and thorough by default.** Posts match the reference posts in length,
-  roughly 4,000 to 8,000+ words. The scaffold carries more sections than a short
-  piece, and every section is fully developed prose, not a summary or a stub.
-  The length is earned by carrying each idea all the way, never by padding: if a
-  passage is filler, cut it, and if a section is thin, develop it rather than
-  pad it.
+- **Long and thorough by default.** Match the length and depth of the source or
+  profile chosen for this run, long and thorough by default, roughly 4,000 to
+  8,000+ words. The scaffold carries more sections than a short piece, and every
+  section is fully developed prose, not a summary or a stub. The length is
+  earned by carrying each idea all the way, never by padding: if a passage is
+  filler, cut it, and if a section is thin, develop it rather than pad it.
 - **Open with a hook.** An analogy, a surprising fact, or a concrete problem , 
   whatever the chosen profile specifies. The first paragraph earns the rest.
 - **One concept per section, walked in order.** Depth on a few ideas beats a
@@ -96,8 +97,9 @@ and every passage.
 - **Topic sentences carry the section.** A reader skimming the first line of
   each paragraph should get the argument.
 - **Close with a reading list.** A short list of real sources at the end , 
-  never inline, per-sentence citations. This matches the reference posts and is
-  a deliberate rejection of the heavy citation machinery of the old project.
+  never inline, per-sentence citations. This follows the source or profile
+  chosen for this run and is a deliberate rejection of the heavy citation
+  machinery of the old project.
 
 ## The pipeline
 
@@ -120,7 +122,10 @@ A profile is a `.toml` file in `profiles/`. It describes *how a post in this
 style is shaped and how it looks*, opening move, section flow, close, heading
 case, fonts, palette, figure look (clean or hand-drawn), never *what it says*.
 Missing fields fall back to a calm baseline: monospace body, lowercase
-headings, italic one-line captions.
+headings, italic one-line captions. No profile is the canonical or reference
+style; each is just one selectable option, and the active style is always the
+source or profile chosen for the current run, a site, a profile name, or a
+profile built from a site, never a fixed author or a single reference post.
 
 Profiles can be hand-written or learned from a site: `fetch_site.py` archives
 posts (robots-respecting), and `build_profile.py` measures the mechanical
@@ -163,6 +168,7 @@ near-copies a source post with words swapped.
 4. Reading-list sources at the end; never inline per-sentence citations.
 5. Learn style from anyone; copy content and figures only from the author's
    own work or license-clean sources.
-6. Long and thorough by default, roughly 4,000 to 8,000+ words like the
-   reference posts: more sections, each fully developed, never padded.
+6. Long and thorough by default: match the length and depth of the source or
+   profile chosen for this run, roughly 4,000 to 8,000+ words, more sections,
+   each fully developed, never padded.
 7. Stay small.

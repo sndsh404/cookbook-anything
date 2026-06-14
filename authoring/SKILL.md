@@ -14,9 +14,12 @@ subscription, no API key, no per-token billing.
 
 The user gives a topic. That is the trigger. Examples: "why most projects are a
 waste," "how flash attention saves memory," "what RISC-V changes about chip
-ownership." Optionally they name a style profile (`layers`, `chinchilla`,
+ownership." Optionally they name a style profile (for example `layers`, `chinchilla`,
 `clean`, `taste`, `humanizer`, `writingpaper`, `sketch`, or one built from a
-site). If they don't, default to `layers`.
+site with `fetch_site.py` + `build_profile.py`). If they don't, default to
+`layers`. These are interchangeable options; no profile is the canonical or
+reference style, and the active style is always whatever source or profile is
+chosen for the run, never a fixed author or a single reference post.
 
 The user only has to give the topic. Everything below is your job, not theirs.
 
@@ -57,10 +60,10 @@ Given a topic (and optional profile), run this end to end:
    section walked in order, topic sentences that carry their paragraph. Apply
    the voice discipline in DESIGN.md (no AI tells, plain confident prose,
    analogies that do work). Write a real one-line takeaway caption under each
-   figure. Default to the length of the reference posts, roughly 4,000 to
-   8,000+ words, with more sections than a short piece and every section fully
-   developed, not summarized. Long because each idea is carried all the way,
-   never padding.
+   figure. Match the length and depth of the source or profile chosen for this
+   run, long and thorough by default, roughly 4,000 to 8,000+ words, with more
+   sections than a short piece and every section fully developed, not
+   summarized. Long because each idea is carried all the way, never padding.
 
 5. **Images, only when they help.** For concrete subjects, fetch license-clean
    images with `fetch_images.py` (Wikimedia Commons + Openverse, free licenses
@@ -79,9 +82,10 @@ Given a topic (and optional profile), run this end to end:
 
 A finished, readable first-draft post in a Word file, with real figures, real
 sources, and the chosen house style, for the user to refine. It is long and
-thorough by default, roughly 4,000 to 8,000+ words like the reference posts,
-with fully developed sections rather than summaries. Their voice and final
-polish stay theirs; you get them a complete, honest starting draft in one step.
+thorough by default, matching the length and depth of the source or profile
+chosen for this run, roughly 4,000 to 8,000+ words, with fully developed
+sections rather than summaries. Their voice and final polish stay theirs; you
+get them a complete, honest starting draft in one step.
 
 ## What this skill never does
 

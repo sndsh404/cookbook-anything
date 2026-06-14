@@ -11,7 +11,10 @@ is the short standing workflow.
 
 1. **Pick the profile.** Use the one they named, or `layers` by default. Read it
    with `style.py`. The profile sets structure, headings, fonts, palette, and
-   figure look.
+   figure look. The style is always whatever source you point at this run, a
+   site, a profile name, or a profile built from a site, never a specific named
+   author or a single reference post. Every profile is just one selectable
+   option; none is the canonical style.
 
 2. **Research real numbers.** Web-search for citable figures worth charting on
    this topic. Keep only numbers you can attribute to a real source; note each
@@ -26,10 +29,11 @@ is the short standing workflow.
    first-draft prose in the profile's style: a hook to open, one concept per
    section, topic sentences, the voice rules from DESIGN.md (no AI tells, plain
    and confident, analogies that do work). Write a real one-line caption under
-   each figure. Default to the length of the reference posts, roughly 4,000 to
-   8,000+ words, with more sections than a short piece and every section fully
-   developed rather than summarized. The length comes from carrying each idea
-   all the way, never from padding.
+   each figure. Match the length and depth of the source/profile chosen for this
+   run, long and thorough by default, roughly 4,000 to 8,000+ words, with more
+   sections than a short piece and every section fully developed rather than
+   summarized. The length comes from carrying each idea all the way, never from
+   padding.
 
 5. **Images only when the topic is visual.** For concrete subjects, fetch
    license-clean images with `fetch_images.py` and keep the attribution. For
@@ -43,10 +47,10 @@ is the short standing workflow.
 
 ## Hard rules, never break these
 
-- **Long by default.** Posts are long and thorough like the reference posts,
-  roughly 4,000 to 8,000+ words: more sections in the scaffold, each one fully
-  developed, not a summary. Long because every idea is carried all the way,
-  never because of padding.
+- **Long by default.** Match the length and depth of the source/profile chosen
+  for this run, long and thorough by default, roughly 4,000 to 8,000+ words:
+  more sections in the scaffold, each one fully developed, not a summary. Long
+  because every idea is carried all the way, never because of padding.
 - **Real data only.** Drop a figure before you fake its numbers. No invented
   statistics, no invented sources.
 - **No paid autopilot.** Do the research and writing here, in-session, on the

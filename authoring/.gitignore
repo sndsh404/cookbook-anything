@@ -1,0 +1,9 @@
+# Scraped site archives are OTHER PEOPLE'S posts. fetch_site.py saves them here
+# for studying STYLE only. Never commit them: the words and figures stay theirs.
+# Only this tool and the author's own outputs belong in the repo.
+archive/
+**/archive/
+
+# Python bytecode
+__pycache__/
+*.pyc
